@@ -1,0 +1,365 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * composition.css — layout primitives for the visual direction layer.
+ *
+ * This file is the CSS half of references/VISUAL-DIRECTION.md. It
+ * provides:
+ *   1. Eight content-driven composition classes (the composition vocab)
+ *   2. Four visual-role modifiers (background / primary / secondary /
+ *      annotation)
+ *   3. Depth tokens (z-index discipline)
+ *   4. Density tokens (font-size floor + safe-area)
+ *   5. Debug primitives (rulers / safe-area boxes / bbox outlines) for
+ *      the ?layout=1 mode
+ *
+ * Conventions — chapters consume these instead of writing per-step grids
+ * from scratch. Each step's scene root carries `data-composition="..."`
+ * so inspect-layout.mjs and the LayoutDebug overlay can name it.
+ *
+ * Composition vs layout primitives in base.css:
+ *   base.css provides .row / .stack / .fill / .center / .scene-pad —
+ *   generic flex/grid scaffolding. composition.css adds SEMANTIC
+ *   layouts (centered-hero, split-screen, ...) — chapter authors
+ *   compose these on top of base.css scaffolding.
+ *
+ * Tokens defined here are non-breaking — themes can override any of
+ * them in tokens.css; chapters can override per-step CSS.
+ * ───────────────────────────────────────────────────────────────────── */
+
+/* ─── 0. Density tokens (font-size floor + safe area) ─── */
+:root {
+  /* Lower bounds for screen-recording text. Chapters MUST consume
+     these instead of hard-coding px. */
+  --headline-min: 60px;       /* hero / h1 floor */
+  --body-min:     20px;       /* body text floor (16px minimum on web → 20px on screen) */
+  --data-min:     16px;       /* data label / corner mark / locator */
+  --micro-min:    12px;       /* only for true meta (corner folio) */
+
+  /* Stage safe area — content should stay within this box. */
+  --safe-top:     80px;
+  --safe-bottom:  80px;
+  --safe-side:    80px;
+
+  /* Maximum text width — long titles/body wrap inside this. */
+  --max-text-width: 60ch;     /* body */
+  --max-title-width: 28ch;    /* headline / h1 (CJK ≈ 24ch) */
+
+  /* Minimum primary visual coverage — used by ?layout=1 overlay's
+     "primary coverage" readout. Chapters don't need to set this. */
+  --primary-coverage-min: 0.40;
+
+  /* ── Depth tokens (z-index discipline) ──
+     Chapters compose these to enforce background/foreground/accent
+     layering without writing z-index everywhere. */
+  --depth-bg:       0;       /* background grid, color fields, ghost text */
+  --depth-content: 10;       /* primary + secondary (default z-index) */
+  --depth-accent:  20;       /* annotations, badges, evidence layer */
+  --depth-overlay: 30;       /* captions, debug overlay */
+}
+
+/* ─── 1. Eight composition primitives ─── */
+
+/* Each composition is a positioning system that fits inside the
+   scene-pad safe area. They assume the parent has position: absolute
+   inset: 0 (which .scene and .scene-pad provide). */
+
+/* 1.1 centered-hero ─────────────────────────────────────────
+   Single focal point, centered. Hero number / big quote / concept
+   name. Everything else is decoration around it. */
+.composition-centered-hero {
+  position: absolute;
+  inset: 0;
+  padding: var(--safe-top) var(--safe-side) var(--safe-bottom);
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+.composition-centered-hero > .role-primary { grid-area: 1 / 1; }
+.composition-centered-hero > .role-secondary { grid-area: 1 / 1; align-self: end; opacity: 0.85; }
+
+/* 1.2 asymmetric-60-40 ───────────────────────────────────────
+   Two-column where the primary occupies ~60% width on the left,
+   secondary on the right. Used for architecture diagram + caption,
+   paper chart + interpretation. */
+.composition-asymmetric-60-40 {
+  position: absolute;
+  inset: 0;
+  padding: var(--safe-top) var(--safe-side) var(--safe-bottom);
+  display: grid;
+  grid-template-columns: 6fr 4fr;
+  gap: var(--space-7, 48px);
+  align-items: center;
+}
+.composition-asymmetric-60-40 > .role-primary  { grid-column: 1; }
+.composition-asymmetric-60-40 > .role-secondary { grid-column: 2; }
+.composition-asymmetric-60-40 > .role-background,
+.composition-asymmetric-60-40 > .role-annotation { grid-column: 1 / -1; }
+
+/* 1.3 split-screen ───────────────────────────────────────────
+   Two equal halves, hard center division. For baseline-vs-method,
+   success-vs-failure, A-vs-B. */
+.composition-split-screen {
+  position: absolute;
+  inset: 0;
+  padding: var(--safe-top) var(--safe-side) var(--safe-bottom);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  align-items: center;
+}
+.composition-split-screen > .role-primary  { grid-column: 1; padding-right: var(--space-7, 48px); }
+.composition-split-screen > .role-secondary { grid-column: 2; padding-left: var(--space-7, 48px); }
+.composition-split-screen::before {
+  /* center divider — thin rule that themes can restyle */
+  content: "";
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  justify-self: center;
+  width: var(--rule-w, 1px);
+  height: 60%;
+  background: var(--rule);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* 1.4 rule-of-thirds ─────────────────────────────────────────
+   Primary at a one-third intersection, secondary anchoring the
+   opposite third. Use for "main visual + short caption". */
+.composition-rule-of-thirds {
+  position: absolute;
+  inset: 0;
+  padding: var(--safe-top) var(--safe-side) var(--safe-bottom);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  gap: var(--space-5, 24px);
+}
+.composition-rule-of-thirds > .role-primary {
+  grid-column: 1 / 3;
+  grid-row: 2 / 4;
+  align-self: end;
+  justify-self: start;
+}
+.composition-rule-of-thirds > .role-secondary {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  align-self: start;
+  justify-self: end;
+  text-align: right;
+  max-width: 32ch;
+}
+
+/* 1.5 full-width-strip ───────────────────────────────────────
+   Horizontal flow from edge to edge. Used for token sequences,
+   timelines, algorithm steps, count-up bars. */
+.composition-full-width-strip {
+  position: absolute;
+  inset: 0;
+  padding: var(--safe-top) var(--safe-side) var(--safe-bottom);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.composition-full-width-strip > .role-primary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5, 24px);
+}
+.composition-full-width-strip > .role-secondary {
+  width: 100%;
+  margin-top: var(--space-4, 16px);
+}
+
+/* 1.6 layered-depth ──────────────────────────────────────────
+   Foreground + background with explicit depth separation.
+   Used for openings, abstract concepts, mechanism overviews.
+   Background layer should have opacity ≤ 0.2 to stay non-competing. */
+.composition-layered-depth {
+  position: absolute;
+  inset: 0;
+  padding: var(--safe-top) var(--safe-side) var(--safe-bottom);
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  place-items: center;
+}
+.composition-layered-depth > .role-background {
+  grid-area: 1 / 1;
+  z-index: var(--depth-bg);
+  opacity: 0.18;
+  filter: blur(2px);
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+.composition-layered-depth > .role-primary {
+  grid-area: 1 / 1;
+  z-index: var(--depth-content);
+}
+.composition-layered-depth > .role-secondary {
+  grid-area: 1 / 1;
+  z-index: var(--depth-content);
+  align-self: end;
+  margin-top: var(--space-7, 48px);
+  text-align: center;
+}
+
+/* 1.7 triptych ───────────────────────────────────────────────
+   Three strict columns. Three-way comparison, three examples,
+   three evidence pieces. */
+.composition-triptych {
+  position: absolute;
+  inset: 0;
+  padding: var(--safe-top) var(--safe-side) var(--safe-bottom);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--space-5, 24px);
+  align-items: stretch;
+}
+.composition-triptych > .role-primary  { grid-column: 2; }
+.composition-triptych > .role-secondary { grid-column: 1; }
+.composition-triptych > .role-annotation { grid-column: 3; }
+
+/* 1.8 diagram-canvas ─────────────────────────────────────────
+   Free-canvas for flow diagrams, model architectures, node networks.
+   Uses padding + flex for positioning rather than absolute coords. */
+.composition-diagram-canvas {
+  position: absolute;
+  inset: 0;
+  padding: calc(var(--safe-top) + 32px) var(--safe-side) calc(var(--safe-bottom) + 32px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.composition-diagram-canvas > .role-background {
+  position: absolute;
+  inset: 0;
+  z-index: var(--depth-bg);
+  opacity: 0.08;
+  pointer-events: none;
+}
+.composition-diagram-canvas > .role-primary {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.composition-diagram-canvas > .role-secondary {
+  margin-top: var(--space-5, 24px);
+  max-width: 56ch;
+  text-align: center;
+}
+
+/* ─── 2. Visual role modifiers ─── */
+/* These are class-based shortcuts for the role attribute. Chapters
+   add these to elements that play each role. They primarily carry
+   z-index depth, opacity defaults, and reading-order hints — they
+   do NOT force colors or sizes (themes + chapter CSS own those). */
+
+.role-background {
+  z-index: var(--depth-bg);
+  /* Default: stay quiet. Chapters can override opacity for stronger
+     backgrounds (e.g. radial glow). */
+}
+
+.role-primary {
+  z-index: var(--depth-content);
+  /* Primary is the visual focus — minimum font-size floor. */
+  font-size: max(var(--font-size, inherit), var(--headline-min));
+}
+
+.role-secondary {
+  z-index: var(--depth-content);
+  font-size: max(var(--font-size, inherit), var(--body-min));
+  /* Default secondary opacity — slightly recessed. */
+  opacity: 0.92;
+}
+
+.role-annotation {
+  z-index: var(--depth-accent);
+  font-size: max(var(--font-size, inherit), var(--data-min));
+  font-family: var(--font-mono, ui-monospace, monospace);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+/* ─── 3. Density helpers ─── */
+
+/* Apply to any text element to enforce the minimum. Used by chapters
+   when they want a "no smaller than X" guarantee rather than picking
+   a specific size. */
+.text-floor-headline { font-size: var(--headline-min); }
+.text-floor-body     { font-size: var(--body-min); }
+.text-floor-data     { font-size: var(--data-min); }
+
+/* Standard max-width constraints. Chapters apply to titles/body to
+   prevent single-line runaways. */
+.constrain-title { max-width: var(--max-title-width); }
+.constrain-body  { max-width: var(--max-text-width); }
+
+/* Tabular numbers — for any vertically-stacked digits / data column. */
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* ─── 4. Choreography helper ─── */
+/* Used to stagger child entrances by --i (set inline as style={{ "--i": 0 }}).
+   Total stagger should remain < 500ms (HyperFrames rule). Children
+   with .stagger-item get a delay = calc(var(--i) * var(--stagger-step, 60ms)). */
+.stagger-group { --stagger-step: 60ms; }
+.stagger-item { animation-delay: calc(var(--i, 0) * var(--stagger-step)); }
+
+/* ─── 5. Debug primitives (used by LayoutDebug.tsx via ?layout=1) ─── */
+/* These are utility classes the debug overlay injects onto the DOM
+   to draw rulers and bboxes. They are NOT used by chapters. */
+
+.debug-safe-area {
+  position: absolute;
+  top: var(--safe-top);
+  left: var(--safe-side);
+  right: var(--safe-side);
+  bottom: var(--safe-bottom);
+  border: 1px dashed rgba(255, 80, 80, 0.5);
+  pointer-events: none;
+  z-index: var(--depth-overlay);
+}
+.debug-caption-avoid {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: var(--safe-bottom);
+  background: rgba(255, 220, 60, 0.08);
+  border-top: 1px dashed rgba(255, 220, 60, 0.5);
+  pointer-events: none;
+  z-index: var(--depth-overlay);
+}
+.debug-thirds {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--depth-overlay);
+  background-image:
+    linear-gradient(to right, transparent 0%, transparent 33.33%, rgba(80, 160, 255, 0.25) 33.33%, rgba(80, 160, 255, 0.25) 33.5%, transparent 33.5%, transparent 66.66%, rgba(80, 160, 255, 0.25) 66.66%, rgba(80, 160, 255, 0.25) 66.83%, transparent 66.83%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, transparent 33.33%, rgba(80, 160, 255, 0.25) 33.33%, rgba(80, 160, 255, 0.25) 33.5%, transparent 33.5%, transparent 66.66%, rgba(80, 160, 255, 0.25) 66.66%, rgba(80, 160, 255, 0.25) 66.83%, transparent 66.83%, transparent 100%);
+}
+.debug-bbox {
+  outline: 1px solid rgba(80, 220, 120, 0.6);
+  outline-offset: -1px;
+}
+.debug-bbox-overlap {
+  outline: 2px solid rgba(255, 80, 80, 0.8);
+  outline-offset: -2px;
+}
+.debug-readout {
+  position: fixed;
+  top: 8px; left: 8px;
+  z-index: calc(var(--depth-overlay) + 1);
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font: 12px/1.4 ui-monospace, monospace;
+  border-radius: 6px;
+  white-space: pre;
+}

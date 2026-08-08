@@ -1,0 +1,57 @@
+/* ─────────────────────────────────────────────────────────────────
+ * paper-experiment-chart · chart-dominant 样式
+ * 默认绑 tufte-ink 主题。零硬编码视觉属性 —— 全走 token。
+ * ───────────────────────────────────────────────────────────────── */
+
+.pe-scene { color: var(--text); display: flex; flex-direction: column; gap: var(--space-5); padding-top: calc(var(--stage-pad-y) + 40px); }
+
+/* 出处 chip + 证据层（混合：supported + infer 同屏） */
+.pe-citation { position: absolute; top: var(--space-7); left: var(--space-9); z-index: 6; color: var(--text-mute); }
+.pe-ev {
+  position: absolute; top: var(--space-7); right: var(--space-9); z-index: 6;
+  padding: 6px 14px; border: var(--bw-1) solid var(--rule); border-radius: var(--r-pill);
+  font-family: var(--font-mono); font-size: var(--t-micro); letter-spacing: var(--track-caps);
+  background: var(--surface-2);
+}
+.pe-ev.ev-supported { color: var(--ev-supported, var(--accent)); border-color: var(--ev-supported, var(--accent)); }
+/* infer = 虚线 + 弱化（讲者之声，不冒充结论） */
+.pe-ev.ev-infer { color: var(--ev-infer, var(--text-mute)); border-style: dashed; }
+/* 第二个 badge 错开位置，避免与 supported 重叠 */
+.pe-ev-2 { top: calc(var(--space-7) + 44px); }
+.pe-locator { position: absolute; bottom: var(--space-7); left: var(--space-9); z-index: 6; color: var(--text-mute); }
+
+/* header */
+.pe-head { display: flex; flex-direction: column; gap: var(--space-3); }
+.pe-kicker { font-family: var(--font-mono); font-size: var(--t-micro); letter-spacing: var(--track-caps); color: var(--accent); text-transform: uppercase; }
+.pe-title { margin: 0; font-family: var(--font-display-cn); font-size: var(--t-h1); letter-spacing: -0.01em; }
+
+/* chart-dominant：图表占主场 */
+.pe-chart { position: relative; flex: 1; min-height: 480px; padding-left: 72px; padding-bottom: 56px; }
+.pe-axis { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.pe-axis-line { stroke: var(--text-mute); stroke-width: 1; stroke-dasharray: 100; stroke-dashoffset: 100; transition: stroke-dashoffset var(--dur-slow) var(--ease-quart); }
+.pe-axis-line.is-drawn { stroke-dashoffset: 0; }
+
+.pe-bars { position: relative; height: 100%; display: flex; align-items: flex-end; justify-content: space-evenly; gap: var(--space-9); }
+
+.pe-col { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); width: 220px; height: 100%; justify-content: flex-end; }
+.pe-bar-track { width: 100%; height: 380px; display: flex; flex-direction: column; justify-content: flex-end; position: relative; }
+.pe-bar {
+  width: 100%; border: var(--rule-w) var(--rule-style) var(--rule);
+  transition: height var(--dur-slow) var(--ease-quart);
+}
+/* 基线柱：弱化（灰墨/斜线感），本文柱：accent —— 同轴同刻度，差异靠数据本身 */
+.pe-bar.pe-prior { background: var(--surface-3); }
+.pe-bar.pe-ours { background: var(--accent-soft); border-color: var(--accent); border-width: var(--bw-2); }
+
+.pe-delta { font-family: var(--font-mono); font-size: var(--t-micro); color: var(--text-mute); letter-spacing: var(--track-caps); }
+.pe-delta-ours { font-family: var(--font-display-en); font-style: italic; font-size: var(--t-h2); color: var(--accent); letter-spacing: 0; animation: pe-drop var(--dur-base) var(--ease-quart) backwards; }
+@keyframes pe-drop { 0% { transform: translateY(-30%); opacity: 0; } 60% { opacity: 1; } 100% { transform: translateY(0); } }
+
+/* 方差须：晚揭示，虚线弱化 */
+.pe-whisker { position: absolute; top: -28px; left: 50%; transform: translateX(-50%); font-family: var(--font-mono); font-size: var(--t-micro); color: var(--text-mute); border-top: var(--bw-1) dashed var(--text-mute); padding-top: 2px; width: 70%; text-align: center; }
+
+.pe-value { font-family: var(--hero-num-font); font-style: var(--hero-num-style); font-size: var(--t-h1); color: var(--text); }
+.pe-col-label { color: var(--text-mute); }
+
+.pe-fairness { margin: 0; font-family: var(--font-display-cn); font-size: var(--t-h3, var(--t-body)); color: var(--text-2, var(--text)); max-width: 60ch; line-height: 1.5; }
+.pe-fairness em { font-style: italic; color: var(--text-mute); }

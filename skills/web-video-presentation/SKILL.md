@@ -1,6 +1,8 @@
 ---
 name: web-video-presentation
-description: 把一篇文章或口播稿，做成"看起来像视频"的点击驱动 16:9 网页演示，可选合成口播音频。流程：原始文章 → **一次产出**口播稿 + outline 开发计划 → 用户**一次对齐** 5 件事（稿子 / outline / 主题 / 素材 / 开发模式）→ 网页开发（逐章 / 顺序 / 并行）→ 可选音频合成（provider-agnostic：内置 MiniMax mmx-cli + OpenAI TTS，可换 ElevenLabs / edge-tts / Azure / 自带 TTS）。**outline 只规划节奏与信息密度，不规划动画** —— 动画由章节开发时按 PRINCIPLES + ANTI-AI 法则即时设计。每次点击推进口播稿的一个节拍，每一步独占整屏，进度条平时隐藏只在悬浮时出现。适用场景：用网页做视频（动态 PPT 但不像 PPT）、把口播稿 / 文章变成可交互的解说、为 B 站 / YouTube / 视频号录屏教程、做有电影感的产品 / talk demo。本 Skill 沉淀的是设计方法论 + 协作流程 —— 不绑定任何特定样式 / 字体 / 颜色 —— 因此能复用到任意主题与美学。
+description: 把一篇文章或口播稿，做成"看起来像视频"的点击驱动 16:9 网页演示，可选合成口播音频。流程：原始文章 → **一次产出**口播稿 + outline 开发计划 → 用户**一次对齐** 5 件事（稿子 / outline / 主题 / 素材 / 开发模式）→ 网页开发（逐章 / 顺序 / 并行）→ 可选音频合成（provider-agnostic：内置 MiniMax mmx-cli + OpenAI TTS + VoxCPM 声音克隆，可换 ElevenLabs / edge-tts / Azure / 自带 TTS）。**outline 只规划节奏与信息密度，不规划动画** —— 动画由章节开发时按 PRINCIPLES + ANTI-AI 法则即时设计。每次点击推进口播稿的一个节拍，每一步独占整屏，进度条平时隐藏只在悬浮时出现。适用场景：用网页做视频（动态 PPT 但不像 PPT）、把口播稿 / 文章变成可交互的解说、为 B 站 / YouTube / 视频号录屏教程、做有电影感的产品 / talk demo。本 Skill 沉淀的是设计方法论 + 协作流程 —— 不绑定任何特定样式 / 字体 / 颜色 —— 因此能复用到任意主题与美学。**论文解读视频（arXiv / 顶会）额外读
+references/PAPER-INTERPRETATION.md** —— 证据层标注（论文事实 / 实验支持 /
+解读推断）+ 论文类型叙事弧 + 图表复用纪律 + opt-in KaTeX 公式揭示（--math）。
 ---
 
 # Web Video Presentation
@@ -15,6 +17,10 @@ description: 把一篇文章或口播稿，做成"看起来像视频"的点击�
 - 16:9 横屏录屏，大字、留白、每屏都要有动效
 - 教学 / 产品演示 / keynote 想要电影感
 - B 站 / YouTube /抖音视频内容
+- **论文解读（arXiv / 顶会 / 期刊）** —— 走 paper 模式，额外读
+  [`references/PAPER-INTERPRETATION.md`](references/PAPER-INTERPRETATION.md)：
+  证据层（论文事实 / 实验支持 / 解读推断）+ 论文类型叙事弧 + 图表复用 + 公式（`--math`）；
+  可选**静默模式**（全程默认、不停下来问，仅论文，见该文件 §12）
 
 本 Skill **以方法论 + 协作流程为核心**。脚手架模板提供 token 和原语，
 但每个美学决策（配色、字型、动效气质）都应该针对你的主题重新设计 ——
@@ -53,6 +59,7 @@ Phase 4   录屏 + 后期
 ```
 my-video/
 ├── article.md          # 用户给原文时必有 —— 不删！开发阶段画面信息源
+├── paper-digest.md     # ★ 仅论文输入：结构化摘要（带 locator），证据层引用源
 ├── script.md           # 必有：保持原文语言的平台化口播稿（决定节拍）
 ├── outline.md          # 必有：开发计划（章节切分 + 每步内容 + 信息池）
 └── presentation/       # 脚手架产出的 Vite + React + TS 项目
@@ -63,10 +70,11 @@ my-video/
     ├── scripts/
     │   ├── extract-narrations.ts   # 扫所有 narrations.ts → audio-segments.json
     │   ├── synthesize-audio.sh     # provider-agnostic runner（循环 segments）
-    │   └── tts-providers/          # 每 provider 一个 .sh（内置 2 个）
+    │   └── tts-providers/          # 每 provider 一个 .sh（内置 3 个）
     │       ├── README.md           # 三函数契约 + 5 段现成代码片段（11labs / edge-tts / say / azure / gcloud）
     │       ├── minimax.sh          # 默认 provider，用 mmx-cli
-    │       └── openai.sh           # 内置 OpenAI TTS（curl + OPENAI_API_KEY）
+    │       ├── openai.sh           # 内置 OpenAI TTS（curl + OPENAI_API_KEY）
+    │       └── voxcpm.sh           # 内置本地声音克隆（常驻 server + 参考音频；4.6G 模型外部）
     ├── audio-segments.json         # extract 产出（合成前 review）
     └── public/audio/<id>/<N>.mp3   # 可选：合成的音频
 ```
@@ -113,10 +121,11 @@ Phase 2.4 的"实现单章"会重复 N 次 —— 每次都要回看核心约束
 | Phase 1.1-1.2 内容编写 | `references/SCRIPT-STYLE.md` + `references/OUTLINE-FORMAT.md` + `article.md`（用户原文，如有） | —— |
 | **Checkpoint Plan 选主题** | —— | `themes/*/theme.json`（动态读全部，列清单 + `bestFor` 推荐 + `descriptionZh`）；`references/THEMES.md`（用户想了解主题系统时） |
 | Phase 2.1 脚手架 | —— | SKILL.md 本节看一次 |
-| **Phase 2.4 实现单章（×N 次，被 2.2 / 2.3 调用）** | **`references/CHAPTER-CRAFT.md`** 单一入口 —— Part 0 十条原则 / Part 1 开工 5 问 / Part 2 关系→动作决策树 / Part 3 视觉工具箱 / Part 4 时长参考 / Part 5 反 AI 味反模式 / Part 6 代码硬规则（**含 narrations.ts 强制约束**）/ Part 7 完工自检 / Part 8 反馈速查 + 当前主题的 `themes/<id>/theme.json` + 当前章节的 outline.md 段落 + **`article.md` 本章对应段落** + 素材清单 | `references/EXAMPLES/`（结构示意，不是抄袭模板）；`references/THEMES.md` 完整 token 契约 |
+| **Phase 2.4 实现单章（×N 次，被 2.2 / 2.3 调用）** | **`references/CHAPTER-CRAFT.md`** 单一入口 —— Part 0 十条原则 / ★ 静态布局阶段 / Part 1 开工 5 问 / Part 2 关系→动作决策树 / Part 3 视觉工具箱 / Part 4 时长参考 / Part 5 反 AI 味反模式 / Part 6 代码硬规则（**含 narrations.ts 强制约束**）/ Part 7 完工自检 / Part 8 反馈速查 + **`references/VISUAL-DIRECTION.md`**（构图 / 视觉角色 / 英雄帧 / 密度 / 反 AI 味完整清单）+ **`references/MOTION-BLUEPRINTS.md`**（论文 / 教学常用 10 种动画节拍）+ **`references/VISUAL-QA.md`**（layout-check 机器检查 + ?layout=1 人工检查）+ 当前主题的 `themes/<id>/theme.json` + 当前章节的 outline.md 段落 + **`article.md` 本章对应段落** + 素材清单 | `references/EXAMPLES/`（结构示意，不是抄袭模板）；`references/THEMES.md` 完整 token 契约 |
 | Phase 3 音频合成 | `references/AUDIO.md`（含 narrations.ts → segments.json → 任意 provider 流程，内置 minimax + openai） | `templates/scripts/tts-providers/README.md`（换 provider / 自带 TTS 时） |
 | Phase 4 录屏 + 后期 | `references/RECORDING.md`（含 `?auto=1` 自动录屏） | —— |
 | 选 / 造 / 切主题 | —— | `references/THEMES.md` |
+| 视觉 QA / 调试 | `references/VISUAL-QA.md`（`npm run layout:check` + `?layout=1` overlay） | —— |
 
 > **写章节时只读一份 `CHAPTER-CRAFT.md`**。十条原则 / 开工 self-prompting /
 > 决策树 / 反 AI 味反模式 / 完工自检全部并入这一份单一入口。`EXAMPLES/`
@@ -223,6 +232,18 @@ Phase 2.4 的"实现单章"会重复 N 次 —— 每次都要回看核心约束
         ⚠️ 风格各章会有差异（这是预期，主题禁区兜底）
 ```
 
+**📄 论文输入额外对齐第 6 件事**（仅 paper 模式；详见
+[`references/PAPER-INTERPRETATION.md`](references/PAPER-INTERPRETATION.md)）：
+
+```
+  6. 论文模式对齐：
+     - paper type 确认？（empirical / methods / survey / theory / system）→ 决定走哪支叙事弧
+     - paper-digest.md 的 locator 够不够撑证据层？（每个关键画面能否挂 §X / Fig Y）
+     - claim vs proven 边界标清了吗？（一句话主张 / 论文已证 / 我的推断）
+     - 哪些图表 redraw / 哪些 animate / 哪些只 cite？（faithfulness：不扭曲数据 / 坐标）
+     - 要不要 --math？（公式多的 methods / theory 论文建议要）
+```
+
 收到反馈后：
 - 稿子 / outline 要改：直接编辑文件，编辑完 ping 一次（或口头描述 agent 改）
 - **主题必须明确**才进入 Phase 2。用户说"主题你帮我选" → 取你推荐的第 1 个，
@@ -239,6 +260,10 @@ Phase 2.4 的"实现单章"会重复 N 次 —— 每次都要回看核心约束
 bash <path-to-web-video-presentation>/scripts/scaffold.sh \
   ./presentation \
   --theme=<用户选的主题 id>
+
+# 论文模式公式多时加 --math（注入 KaTeX + <Math>/<Formula>，详见 PAPER-INTERPRETATION.md §7）
+bash <path-to-web-video-presentation>/scripts/scaffold.sh \
+  ./paper-talk --theme=tufte-ink --math
 
 bash <path-to-web-video-presentation>/scripts/scaffold.sh --list-themes
 ```
@@ -330,17 +355,29 @@ rm -rf presentation/src/chapters/01-example
 ### 2.4 实现单章（每章必走）
 
 详细指引见 [`references/CHAPTER-CRAFT.md`](references/CHAPTER-CRAFT.md) ——
-**单一必读入口**，覆盖：视觉演示要求 / 逐步揭示 / 内容取舍 / 双源原则
-/ 视频演示基本审美 / 反 AI 味 / 代码红线 / 完工自检。
+**单一必读入口**，覆盖：视觉演示要求 / ★ 静态布局阶段 / 逐步揭示 /
+内容取舍 / 双源原则 / 视频演示基本审美 / 反 AI 味 / 代码红线 / 完工自检。
 
 **核心要点**（CHAPTER-CRAFT.md 详述）：
 
+- **★ 静态布局阶段（必走，铁律）**：每步实现顺序 = **关系 → 构图 → 英
+  雄帧 → 动作 → 持留** —— 先写静态终态，再加入场动画。配套：
+  - [`references/VISUAL-DIRECTION.md`](references/VISUAL-DIRECTION.md) —— 8 个
+    构图 / 视觉角色 / 英雄帧契约 / 密度规则 / AI 味清单
+  - [`references/MOTION-BLUEPRINTS.md`](references/MOTION-BLUEPRINTS.md) —— 论
+    文 / 教学常用 10 种动画节拍（process-build / compare-reveal /
+    ablation-remove / ...）
 - **每章必须有 CSS / SVG / Canvas / JS 视觉演示**，禁纯文字章节
 - **逐步揭示**：清单 / 列表必须 1 项 = 1 step，禁一次全展示
 - **双源原则**：节奏跟口播稿（顺序不能乱），细节回原文章抽（信息池 +
   本章 article 段落）
-- **完工自检逐项过**，不达标回去改 —— 按上文「硬性自检协议」执行
-  （优先 Agent Teams → subAgent → 自检），**改完再向用户汇报本章交付**
+- **每章 scene 根元素加 `data-composition="..."`**（8 个合法值之一）——
+  是 `npm run layout:check` 机器检查 + `?layout=1` 人工检查的命名锚点
+- **完工自检分三层**（详见 [`references/VISUAL-QA.md`](references/VISUAL-QA.md)）：
+  1. **结构层**：`npm run layout:check` 跑 `inspect-layout.mjs`
+  2. **视觉层**：开 `?layout=1` debug overlay 逐 step 走英雄帧
+  3. **气质层**：CHAPTER-CRAFT.md Part 5 + VISUAL-DIRECTION.md §5
+     + MOTION-BLUEPRINTS.md 选不同蓝图
 
 ### 2.5 大改后 bump STORAGE_KEY
 
@@ -361,9 +398,11 @@ Phase 2 结束后必须停下来，问用户：
   ✓ 合成 → 扫所有章节的 narrations.ts 出 audio-segments.json，
            调 TTS provider 合成每步一个 mp3 到 public/audio/。
            合成完后用 ?auto=1 模式可以一镜到底录屏（音视频天然同步）。
-           内置两个 provider：
-             • minimax (mmx-cli)    —— 默认，中文音色稳
-             • openai  (OPENAI_API_KEY) —— curl-based，多数已有 key
+           内置三个 provider（默认 voxcpm —— 本地声音克隆，离线、可复刻任意音色）：
+             • voxcpm  (本地声音克隆) —— 默认。首次跑 scripts/voxcpm/voxcpm-setup.sh：
+                       自动找/装 python+voxcpm、找/下 4.6G 模型、写配置（已就绪则秒过）
+             • minimax (mmx-cli)       —— 中文音色稳，要 MiniMax key；显式 PRESENTATION_TTS=minimax
+             • openai  (OPENAI_API_KEY) —— curl-based；显式 PRESENTATION_TTS=openai
            其它后端 (ElevenLabs / edge-tts 免费 / macOS say 离线 /
            Azure / Google) 见 scripts/tts-providers/README.md 的现成片段。
   ✗ 不合成 → 跳过 Phase 3，直接 Phase 4 用手动录屏 + 后期配音。
@@ -379,11 +418,13 @@ Phase 2 结束后必须停下来，问用户：
 
 ```bash
 cd presentation
-npm run extract-narrations   # 扫所有 narrations.ts → audio-segments.json
+npm run extract-narrations           # 扫所有 narrations.ts → audio-segments.json
 # 让用户扫一眼 audio-segments.json 确认文本对
-npm run synthesize-audio                       # 默认 minimax provider，增量
-# 或用内置 openai (要 OPENAI_API_KEY):
-PRESENTATION_TTS=openai npm run synthesize-audio
+bash scripts/voxcpm/voxcpm-setup.sh  # 首次（默认 voxcpm）：自动装 voxcpm + 找/下模型；已就绪则秒过
+npm run synthesize-audio             # 默认 voxcpm，增量；用克隆声音念全部 step
+# 显式换线上 TTS：
+PRESENTATION_TTS=minimax npm run synthesize-audio   # MiniMax（要 mmx-cli + key）
+PRESENTATION_TTS=openai  npm run synthesize-audio   # OpenAI（要 OPENAI_API_KEY）
 # 或自定义：写一个 scripts/tts-providers/<name>.sh，见该目录的 README.md
 ```
 
@@ -423,6 +464,9 @@ Part 0 —— **写章节时回那里查**，下面只是索引。
 | 9 | 整片同一主题 | 章节间不翻表面色；**颜色 / 字体走 token**，其它尺度章节自由 |
 | 10 | 双源原则 | script 定节拍，**article 定画面密度**（落到信息池） |
 
+> 📄 **论文输入**：在十条原则之上再叠一层认识论纪律 —— 证据层（论文事实 /
+> 实验支持 / 解读推断 分开标）。先读 [`references/PAPER-INTERPRETATION.md`](references/PAPER-INTERPRETATION.md)。
+
 ---
 
 ## 常见用户反馈速查
@@ -441,11 +485,16 @@ Part 8「常见反馈速查」。**关键**：先定位是哪一层（节奏 / �
 |---|---|---|
 | [`references/SCRIPT-STYLE.md`](references/SCRIPT-STYLE.md) | Phase 1.2 必读 | 文章 → 口播稿规则、平台变体 |
 | [`references/OUTLINE-FORMAT.md`](references/OUTLINE-FORMAT.md) | Phase 1.2 必读 | outline.md 字段 spec、命名约定、章节切分、信息池 |
-| [`references/CHAPTER-CRAFT.md`](references/CHAPTER-CRAFT.md) | **Phase 2.4 每章单一必读入口** | Part 0 十条原则 / Part 1 开工 5 问 / Part 2 关系→动作决策树 / Part 3 视觉工具箱 / Part 4 时长 / Part 5 反 AI 味反模式 / Part 6 代码硬规则 / Part 7 完工自检 / Part 8 反馈速查 |
-| [`references/EXAMPLES/`](references/EXAMPLES/) | **可选** —— 看结构 | 章节结构示意（hook / list-reveal / case-tech-review）；**不是抄袭模板** |
+| [`references/CHAPTER-CRAFT.md`](references/CHAPTER-CRAFT.md) | **Phase 2.4 每章单一必读入口** | Part 0 十条原则 / ★ 静态布局阶段 / Part 1 开工 5 问 / Part 2 关系→动作决策树 / Part 3 视觉工具箱 / Part 4 时长 / Part 5 反 AI 味反模式 / Part 6 代码硬规则 / Part 7 完工自检 / Part 8 反馈速查 |
+| [`references/VISUAL-DIRECTION.md`](references/VISUAL-DIRECTION.md) | **Phase 2.4 ★ 静态布局阶段** | 8 个构图（centered-hero / asymmetric-60-40 / split-screen / rule-of-thirds / full-width-strip / layered-depth / triptych / diagram-canvas）+ 视觉角色 / 英雄帧契约 / 密度 tokens / 反 AI 味完整清单 |
+| [`references/MOTION-BLUEPRINTS.md`](references/MOTION-BLUEPRINTS.md) | **Phase 2.4 选动画节拍** | 论文 / 教学常用 10 种蓝图（process-build / compare-reveal / ablation-remove / formula-assemble / data-countup / focus-drilldown / failure-inspect / token-transform / evidence-stack / boundary-contract） |
+| [`references/VISUAL-QA.md`](references/VISUAL-QA.md) | **Phase 2.4 完工自检** | 三层检查：`npm run layout:check` 机器检查 + `?layout=1` debug overlay 人工检查 + 修复 catalog |
+| [`references/PAPER-INTERPRETATION.md`](references/PAPER-INTERPRETATION.md) | **论文输入时必读**（叠加在 SKILL + CHAPTER-CRAFT 之上） | paper-digest / 论文类型叙事弧 / 证据层（事实·证据·推断）/ 内容→动画→布局 map / 公式（KaTeX `--math`）/ 图表复用 / 论文级验收 |
+| [`references/EXAMPLES/`](references/EXAMPLES/) | **可选** —— 看结构 | 章节结构示意（hook / list-reveal / case-tech-review / **paper-*** 4 个论文 anchor）；**不是抄袭模板** |
 | [`references/THEMES.md`](references/THEMES.md) | 选 / 造 / 切主题时 | 完整 token 契约 + 内置主题清单 + 创作流程 |
-| [`references/AUDIO.md`](references/AUDIO.md) | Phase 3 才读 | provider-agnostic 音频合成流程、内置 minimax 用法、换 provider 路径、故障排查 |
-| [`templates/scripts/tts-providers/README.md`](templates/scripts/tts-providers/README.md) | 换 / 加 TTS provider 时 | 三函数契约 + 内置 2 个 (minimax / openai) + 5 种现成代码片段（ElevenLabs / edge-tts / macOS say / Azure / Google） |
+| [`references/AUDIO.md`](references/AUDIO.md) | Phase 3 才读 | provider-agnostic 音频合成流程、内置 minimax / voxcpm 用法、换 provider 路径、故障排查 |
+| [`references/voices/`](references/voices/) | 用 voxcpm 克隆声音时 | 自带 Sam 克隆样本 + 加自己声音的流程（克隆心智模型） |
+| [`templates/scripts/tts-providers/README.md`](templates/scripts/tts-providers/README.md) | 换 / 加 TTS provider 时 | 三函数契约 + 内置 3 个 (minimax / openai / voxcpm) + 5 种现成代码片段（ElevenLabs / edge-tts / macOS say / Azure / Google） |
 | [`references/RECORDING.md`](references/RECORDING.md) | Phase 4 才读 | 录屏工具 + 后期合成 |
 | [`themes/`](themes) | Checkpoint Plan / Phase 1.2 时翻 | 内置主题（每个含 `theme.json` + `tokens.css`） |
 | [`scripts/scaffold.sh`](scripts/scaffold.sh) | Phase 2.1 跑一次 | 一键项目脚手架 |

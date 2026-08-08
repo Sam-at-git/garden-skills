@@ -19,6 +19,7 @@
 - 做产品演示、教程、keynote 式讲解、视觉 talk
 - 做“动态 PPT，但不要像 PPT”的演示体验
 - 在视觉 outline 对齐后，可选合成口播音频
+- **解读研究论文（arXiv / 顶会 / 期刊）** —— opt-in *论文模式* 叠加证据层（论文事实 / 实验支持 / 解读推断，带定位符 §X / Fig Y）、论文类型叙事弧、图表复用纪律、KaTeX 公式揭示（`--math`）；可选**静默模式**（全程默认、不停下来问，仅论文）
 
 这个 Skill 的核心是**方法论 + 协作流程**。脚手架提供 token、舞台原语、主题和示例，但每个项目仍然应该根据主题重新选择视觉语言。
 
@@ -33,8 +34,9 @@
 - **隐藏 chrome**：进度控制悬浮才出现，录屏画面保持干净。
 - **动效优先**：每一步都需要一个移动的视觉锚点，静态正文是坏味道。
 - **主题 token**：视觉属性通过语义 token 驱动，换主题不只是换颜色。
-- **可插拔 TTS**：provider-agnostic 音频 runner，**内置 2 个 provider**（MiniMax `mmx-cli` + OpenAI TTS via curl）；往 `tts-providers/` 丢一个 `.sh` 就能换成 ElevenLabs / edge-tts / Azure / Google Cloud / macOS `say` / 任何自部署 TTS。
+- **可插拔 TTS**：provider-agnostic 音频 runner，**内置 3 个 provider**（MiniMax `mmx-cli` + OpenAI TTS + 本地 VoxCPM 声音克隆）；往 `tts-providers/` 丢一个 `.sh` 就能换成 ElevenLabs / edge-tts / Azure / Google Cloud / macOS `say` / 任何自部署 TTS。
 - **硬 checkpoint**：稿子/主题、outline、音频合成前都必须停下来与用户确认。
+- **论文模式（opt-in）**：输入是论文时，证据层把每个屏幕论点标成 *论文事实 / 实验支持 / 解读推断*，并挂定位符（`§X` / `Fig Y` / `Table Z`）；另有论文类型叙事弧、图表复用纪律、KaTeX 公式揭示（`scaffold --math`）。详见 `references/PAPER-INTERPRETATION.md` 与 4 个 `paper-*` 示例。
 
 ---
 
@@ -87,7 +89,8 @@ skills/web-video-presentation/
 │   │   └── tts-providers/            # 一个文件 = 一个 TTS 后端
 │   │       ├── README.md             # 三函数契约 + ElevenLabs / edge-tts / Azure / Google / say 的现成片段
 │   │       ├── minimax.sh            # 默认 provider（mmx-cli）
-│   │       └── openai.sh             # 内置：OpenAI TTS（curl + OPENAI_API_KEY）
+│   │       ├── openai.sh             # 内置：OpenAI TTS（curl + OPENAI_API_KEY）
+│   │       └── voxcpm.sh             # 内置：本地声音克隆（模型 + 参考音频外部）
 │   └── src/
 └── themes/                    # 23 套主题，每套独立设计签名
     ├── midnight-press/
@@ -317,6 +320,6 @@ Skill 内置 **23 套**主题，每套都有独立的设计 DNA —— 不是简
 - [SCRIPT-STYLE.md](./references/SCRIPT-STYLE.md)：文章转口播稿规则
 - [PATTERNS.md](./references/PATTERNS.md)：可选视觉 primitive 配方
 - [AUDIO.md](./references/AUDIO.md)：可选口播音频合成流程（provider-agnostic）
-- [tts-providers/README.md](./templates/scripts/tts-providers/README.md)：TTS provider 三函数契约 + 内置 2 个 (minimax / openai) + ElevenLabs / edge-tts / Azure / Google / macOS say 的现成代码片段
+- [tts-providers/README.md](./templates/scripts/tts-providers/README.md)：TTS provider 三函数契约 + 内置 3 个 (minimax / openai / voxcpm) + ElevenLabs / edge-tts / Azure / Google / macOS say 的现成代码片段
 - [RECORDING.md](./references/RECORDING.md)：录屏与后期注意事项
 

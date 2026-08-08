@@ -32,6 +32,10 @@
 
 **怎么组合发挥都行 —— 但每章必须用，不允许整章纯文字。**
 
+> 📄 **论文章节**：研究问题 / 架构 / 注意力 / 公式 / 消融 / 失败案例 等
+> "内容 → 动作 → 布局"速查，见 [`PAPER-INTERPRETATION.md`](PAPER-INTERPRETATION.md)
+> §4（map）+ §5（五种布局 archetype）。
+
 ---
 
 ## 逐步揭示，禁止一次全展示
@@ -86,35 +90,69 @@ hero 标语 / 一个数字 / 一组对比 + 必要的视觉演示。
 
 ---
 
+## ★ 静态布局阶段（在写任何动画之前）
+
+每章 JSX 开工前必须先走完这一阶段 —— 否则动画的入场状态会**掩盖**
+重叠、越界、视觉失衡，等视频渲染出来才发现就晚了。
+
+**铁律**：**关系 → 构图 → 英雄帧 → 动作 → 持留**
+
+1. **关系** —— 读完 outline 这步的 `purpose` / `focal` / `content relationship`
+   三个字段，明确"primary 是谁、secondary 是谁、它们表达什么关系"
+2. **构图** —— 从 [`VISUAL-DIRECTION.md`](VISUAL-DIRECTION.md) §1 八
+   个构图（`centered-hero` / `asymmetric-60-40` / `split-screen` /
+   `rule-of-thirds` / `full-width-strip` / `layered-depth` / `triptych` /
+   `diagram-canvas`）里挑一个 —— 不知道选哪个就 `centered-hero` 起手
+3. **英雄帧** —— 写**静态终态** JSX（**所有元素在最终位置、对比
+   充分、无溢出、留白平衡**）。**不加任何 `animation` / `transition` /
+   `MaskReveal` / `letter-stagger` / 入场动效**。写完开 `?layout=1`
+   走一遍（详见 [`VISUAL-QA.md`](VISUAL-QA.md) §3）确认静态可读
+4. **动作** —— 给 primary / secondary 加 entrance / accent 动画。
+   **先入场后出场**：入场用 `from`（动画从初始态到 hero frame），
+   不要直接写最终位置 + 加 transition（动画 bug 最常见来源）
+5. **持留** —— 动作结束后画面稳态，与下一 step 衔接（不要加 exit
+   动画，下一 step 入场时自然接管）
+
+详细原理 + 视觉角色 / 层级约束 / 密度规则 / 反 AI 味清单 → 完整
+配套在 [`VISUAL-DIRECTION.md`](VISUAL-DIRECTION.md)。本节是**单一
+入口**，那个文件是**深度参考**。
+
+---
+
 ## 字体 / 配色 / 动画 / 留白 —— 视频演示基本审美
 
 视频观众离屏幕远、注意力浮动，所以：
 
-- **字号要大** —— hero 文字至少 80px 起，远观也能看清
-- **留白要多** —— 舞台四边都要让出大留白，画面不要塞满
+- **字号要大** —— 详细密度下限（hero / 正文 / 数据标签）见
+  [`VISUAL-DIRECTION.md`](VISUAL-DIRECTION.md) §4 的 density tokens。
+  简版：hero ≥ 60px，正文 ≥ 20px，数据标签 ≥ 16px
+- **留白要多** —— 舞台四边都要让出大留白（默认 80px / 96px，主题
+  可调到 110/150），画面不要塞满
 - **配色要舒服** —— **颜色和字体家族必须用主题 token**（保证换主题不破）；
   字号 / 间距 / 时长这些章节按内容自由发挥（详见下方「代码层最小约束」）
 - **动画要舒服 + 炫酷** —— 出现得干净利落，停下来不抢戏；炫酷靠
-  **设计巧思**（内容驱动的演示动画），不靠**速度暴力**或**密集闪烁**
+  **设计巧思**（内容驱动的演示动画），不靠**速度暴力**或**密集闪烁**。
+  论文 / 教学常用 10 种动画节拍 → [`MOTION-BLUEPRINTS.md`](MOTION-BLUEPRINTS.md)
 
 ---
 
 ## 避免 AI 味
 
-AI 生成的网页有几种共有的"视觉指纹"，**全部不要**：
+AI 生成的网页有几种共有的"视觉指纹"。**完整清单见**
+[`VISUAL-DIRECTION.md`](VISUAL-DIRECTION.md) §5（含通用 13 条 + 论文
+专属 6 条）。**任何一条出现 = 回去改**。
 
-- 紫粉 / 蓝紫对角渐变背景
-- 圆角卡片 + 彩色左边框装饰
-- 渐变按钮 + 大圆角药丸
-- emoji 当图标用
-- 假数据 / 假 logo / 假"X 万用户"
-- 整章 N 步用同一种入场动画（全场 fade / 全场 blur）
-- 每步都挂 ken burns / 光晕呼吸 / 持续闪烁
-- 每屏右下角都挂 mono 角标 / 序号
+最常见的几条提个醒：紫粉 / 蓝紫渐变背景 / 圆角彩色边框 / 渐变按钮 /
+emoji 当图标 / 假数据假 logo / 整章同一种入场动画 / 每屏右下角 mono
+角标。
 
 缺的东西**承认缺** —— 用 placeholder 占位卡（一张写着"image · 16:9
 描述"的卡片，按真实比例留位）。**不要**用 emoji 凑、不要找无关图凑、
 不要编数字。**没有就承认没有**，比 fake 强一百倍。
+
+> 📄 **论文章节**的论文专属反模式（无统一坐标轴放大差异 / 只晒最好
+> 结果 / 讲者猜测伪装成论文结论 / 重绘图悄悄改坐标 / 强塞公式 /
+> 屏幕念摘要…）见 [`PAPER-INTERPRETATION.md`](PAPER-INTERPRETATION.md) §9。
 
 ---
 
@@ -175,6 +213,18 @@ AI 生成的网页有几种共有的"视觉指纹"，**全部不要**：
 - **动画时长必须 ≤ 该 step 的口播时长**——Auto 模式严格按音频结束推进，
   没有"等动画跑完"的兜底。动画太长 → 三选一：**写更长口播 / 拆 step
   / 调动画速度**。详细机制见 [`AUDIO.md`](AUDIO.md)
+- **内容不许出界（stage overflow）**：舞台固定 1920×1080，内容按**原始 px**
+  布局（只有整舞台 transform scale，**没有**响应式收缩）。安全内容宽 ≈ 1728px
+  （1920 − 两侧 stage-pad）。**横向排列的组（flex 行 / grid 行）里，"写死大
+  宽度元素 + `white-space: nowrap` 文字" 的总和一旦超过 1728，就会被舞台
+  `overflow: hidden` 裁掉** —— 典型翻车：`[大数字][写死 1080px 的横条][nowrap
+  标签]`，标签顶出右边界、长条挤到数字上。规则：
+  - 横向组里的"宽元素"（横条 / 进度条 / 分隔线 / 表格列）用**弹性宽度**
+    （`flex: 1` / `minmax(0, 1fr)` / 在 track 内 `width: 100%`）+ `min-width: 0`，
+    让整行自动收缩塞进容器；**别**写死 `width: 大px` + `flex: none`。
+  - 心算每个横排：`固定宽之和 + gap + nowrap 文字宽` ≤ 容器 max-width（≤ 1728）。
+  - 横条"生长"填充动画用**百分比**（`width: 0 → 100%`），别用写死 px ——
+    track 宽一变就错位。
 
 ---
 
@@ -195,14 +245,31 @@ AI 生成的网页有几种共有的"视觉指纹"，**全部不要**：
 > **拿到自检结论后**：先按 fail 项**改完代码**，然后再向用户汇报"做完
 > 了 + 自检结论 + 改了什么"。**直接拿原始结论汇报但不修复 = 违规**。
 
+完工自检分**三层**（**全部过 = 可以汇报完成**）：
+
+1. **结构层**（机器）：`npm run layout:check` —— 跑
+   [`VISUAL-QA.md`](VISUAL-QA.md) §2 的 `inspect-layout.mjs`。
+   fail 项必须修完；warn 项至少人工确认。
+2. **视觉层**（人工）：开 `?layout=1` debug overlay，逐 step 走一遍
+   静态英雄帧（[`VISUAL-QA.md`](VISUAL-QA.md) §3）。每步确认
+   primary ≥ 40%、无溢出、留白成方向、至少两种层级手段。
+3. **气质层**（人工）：下方逐项清单 + [`VISUAL-DIRECTION.md`](VISUAL-DIRECTION.md)
+   §5 反 AI 味清单 + [`MOTION-BLUEPRINTS.md`](MOTION-BLUEPRINTS.md) 选不同蓝图。
+
 写完一章 + 在浏览器点完一遍后逐项过：
 
 - [ ] **每章至少 1~2 处 CSS / SVG / Canvas / JS 视觉演示** —— 没有 = 回去补
 - [ ] **不同 step 的主导动作不一样** —— 全章一种动画 = 回去重做
-- [ ] 字号大、留白舒服、配色舒服
+      （参考 [`MOTION-BLUEPRINTS.md`](MOTION-BLUEPRINTS.md) 选不同蓝图）
+- [ ] **每步的 scene 根元素有 `data-composition` 属性**，值在 8 个
+      合法构图之一（[`VISUAL-DIRECTION.md`](VISUAL-DIRECTION.md) §1）——
+      没有 = `inspect-layout.mjs` 会 fail
+- [ ] **相邻 step 不连续复用同一构图超过 2 次** —— 重复 = 视觉无呼吸
+- [ ] 字号大、留白舒服、配色舒服（具体密度下限见 [`VISUAL-DIRECTION.md`](VISUAL-DIRECTION.md) §4）
 - [ ] 清单 / 列表逐个揭示，**1 项 = 1 step**
 - [ ] 画面信息比口播稿多（回了原文章抽细节挂上来）
 - [ ] 没有紫粉渐变 / 圆角彩色边框 / emoji / 假数据 / 假 logo
+      （展开清单见 [`VISUAL-DIRECTION.md`](VISUAL-DIRECTION.md) §5）
 - [ ] 缺的素材用 placeholder，不是 fake
 - [ ] **颜色和字体家族全部走 token**（无硬编码 hex / 字体名）；hero 数字
       / 卡片 / 分割线 / 舞台用 primitive class 接入主题性格 —— 这两条不
@@ -218,7 +285,17 @@ AI 生成的网页有几种共有的"视觉指纹"，**全部不要**：
 - [ ] **每条 narration 文本与 `script.md` 对应段落语义一致**（关键短语 /
       数字 / 引用全部保留，可为 TTS 微调标点断句）—— 录屏画外音应当能被
       观众听成同一段稿子
-- [ ] **每个 step 的视觉动画时长 ≤ 口播时长**（口播 `字数 ÷ 4` ≈ 秒数）—— 
+- [ ] **每个 step 的视觉动画时长 ≤ 口播时长**（口播 `字数 ÷ 4` ≈ 秒数）——
       超出会被 Auto 模式当场切断，动画演到一半就跳下一步
+- [ ] **没有任何内容溢出舞台（出界检查）**：每个横排的 `固定宽之和 + gap +
+      nowrap 文字宽` ≤ ~1728px；横条 / 进度条 / 分隔线走弹性宽度（`flex: 1` /
+      `minmax(0, 1fr)`）而非写死大 px；填充动画用 `%` 不用 px。**逐 step 目测
+      四边** —— 右下角标签、长横条、宽表格、多列卡最易出界（被舞台 `overflow:
+      hidden` 静默裁掉，不报错，必须人眼/逐 step 查）
 
 任一未过 → 回去改。**不要**"先放着以后修"。
+
+> 📄 **论文章节额外过** [`PAPER-INTERPRETATION.md`](PAPER-INTERPRETATION.md)
+> §10 的论文级验收：静音测试 / 纯听觉测试 / 阶段感知 / 初学者带走物
+> （主张 + 证据 + 局限 + 复现入口）+ 证据层（每个 fact/supported 步骤挂
+> locator、infer 步骤读作讲者之声）。

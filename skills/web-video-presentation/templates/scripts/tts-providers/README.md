@@ -13,7 +13,7 @@
 ## 怎么用
 
 ```bash
-# 默认（minimax）
+# 默认（voxcpm）
 npm run synthesize-audio
 
 # 换 provider
@@ -36,11 +36,59 @@ npm run synthesize-audio -- --force
 
 | 文件 | 后端 | 鉴权 | 备注 |
 |---|---|---|---|
-| `minimax.sh` | MiniMax `mmx` CLI | `mmx auth login --api-key` | **默认**；中文口播质量稳 |
+| `voxcpm.sh` | VoxCPM2（本地 / 离线） | 无 key；setup 脚本自动装+下 | **默认 / 声音克隆**；可复刻任意音色，自带常驻 server |
+| `minimax.sh` | MiniMax `mmx` CLI | `mmx auth login --api-key` | 中文口播质量稳（显式 `PRESENTATION_TTS=minimax`） |
 | `openai.sh` | OpenAI Audio Speech API | `OPENAI_API_KEY` env var | curl-based；多数 agent 已有 key |
 
-只内置这两个 —— 我们不替你做更多技术选型。其它后端的代码片段在下面，
+只内置这三个 —— 我们不替你做更多技术选型。其它后端的代码片段在下面，
 复制到 `tts-providers/<name>.sh` 即可启用。
+
+### VoxCPM（本地声音克隆）— 内置
+
+**已内置** —— 见 [`voxcpm.sh`](./voxcpm.sh)，配套常驻 server 在
+`../voxcpm/voxcpm_server.py`。
+
+VoxCPM2 是**本地、离线、可克隆任意音色**的 TTS（2B，48kHz，30 语言）。
+和云 provider 不同：模型加载要 ~9s，所以 provider 会拉起一个**常驻
+HTTP server**（模型只加载一次），之后每段合成转发给它。
+
+- **模型不打包**：4.6G 留在你本机。放在 `./pretrained_models/VoxCPM2` 或
+  `~/.cache/huggingface/hub/VoxCPM2` 就会被**自动探测**，无需手设；放别处
+  才用 `VOXCPM_MODEL_PATH` 指定。
+- **声音样本**：scaffold 时把 Sam 的克隆样本拷进项目
+  `scripts/voxcpm/voices/sam_voice_ref.wav`，并**自动作为默认音色**，零配置；
+  想换自己的声音见 `references/voices/README.md`。
+
+启用（voxcpm 是默认 provider；首次跑 setup 自动装+下）：
+
+```bash
+bash scripts/voxcpm/voxcpm-setup.sh   # 自动找/装 python+voxcpm、找/下模型、写配置（idempotent）
+npm run synthesize-audio              # 默认就是 voxcpm
+```
+
+只有当模型不在常规位置、或想换音色 / python 解释器时，才需要覆盖（写进
+`scripts/voxcpm/voxcpm.env`，provider 自动 source）：
+
+```bash
+export VOXCPM_MODEL_PATH=/abs/path/to/VoxCPM2      # 模型在别处时
+export VOXCPM_VOICE=/abs/path/to/your_voice.wav    # 换音色
+export VOXCPM_PYTHON=/path/to/venv/bin/python      # 指定解释器
+```
+
+可选 env：
+
+| 变量 | 默认 | 作用 |
+|---|---|---|
+| `VOXCPM_MODEL_PATH` | —— **必须** | 本地 VoxCPM2 目录 |
+| `VOXCPM_VOICE` | —— 推荐 | 参考音频路径（克隆音色） |
+| `VOXCPM_VOICE_DESIGN` | —— | 不克隆、改用自然语言描述设计音色 |
+| `VOXCPM_PYTHON` | `python3` | 装了 voxcpm 的解释器（venv/conda 全路径） |
+| `VOXCPM_DEVICE` | `auto` | `auto` / `cpu` / `mps` / `cuda` |
+| `VOXCPM_PORT` | `8765` | 常驻 server 端口 |
+| `VOXCPM_CFG` / `VOXCPM_STEPS` | `2.0` / `10` | 生成参数（引导强度 / 步数） |
+
+> `tts_check` 会拉起 server 并等它就绪（首次约 10s 加载模型）。server 在
+> `127.0.0.1` 上常驻、跨次复用。停掉它：`lsof -ti:8765 | xargs kill`。
 
 ---
 

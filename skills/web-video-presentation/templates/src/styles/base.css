@@ -11,6 +11,12 @@
  *     Everything else — font sizes, spacing, motion timings, easings,
  *     border widths, generic radii — chapters write freely (token OR
  *     hard-coded value, whatever the content needs).
+ *   • composition.css owns the visual-direction layer:
+ *     8 composition classes (.composition-centered-hero / -split-screen / ...),
+ *     4 visual-role modifiers (.role-primary / -secondary / -background / -annotation),
+ *     depth tokens (--depth-bg/content/accent/overlay),
+ *     density tokens (--headline-min / --body-min / --data-min / safe-*),
+ *     and debug primitives for the ?layout=1 overlay.
  *
  * The variables defined below are kept ONLY for the primitive classes
  * in this file (.label-mono / .kicker / .corner-mark / .click-cue /

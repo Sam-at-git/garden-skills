@@ -3,13 +3,18 @@
 # scaffold.sh —— 一键脚手架，创建一个 video-presentation 项目。
 #
 # 用法：
-#   bash scripts/scaffold.sh <target-dir> [--theme=<id>]
+#   bash scripts/scaffold.sh <target-dir> [--theme=<id>] [--math]
 #   bash scripts/scaffold.sh --list-themes
 #
 # 例子：
 #   bash <path-to-web-video-presentation>/scripts/scaffold.sh ./presentation
 #   bash <path-to-web-video-presentation>/scripts/scaffold.sh ./talk --theme=paper-press
+#   bash <path-to-web-video-presentation>/scripts/scaffold.sh ./paper-talk --theme=tufte-ink --math
 #   bash <path-to-web-video-presentation>/scripts/scaffold.sh --list-themes
+#
+# --math：可选。注入 KaTeX + <Math>/<Formula> 组件 + math.css，用于论文模式
+#         的公式揭示（见 references/PAPER-INTERPRETATION.md §7）。不传时脚手架
+#         与不传完全一致。
 #
 # 跑完后，看 SKILL.md "Phase 2.4 实现单章" + references/CHAPTER-CRAFT.md
 # 了解每章怎么写。卡壳时翻 references/EXAMPLES/ 找完整章节 anchor。
@@ -45,6 +50,7 @@ list_themes() {
 # ── 解析参数 ──
 TARGET=""
 THEME="$DEFAULT_THEME"
+MATH=0
 for arg in "$@"; do
   case "$arg" in
     --list-themes)
@@ -53,6 +59,9 @@ for arg in "$@"; do
       ;;
     --theme=*)
       THEME="${arg#--theme=}"
+      ;;
+    --math)
+      MATH=1
       ;;
     --*)
       echo "✗ 未知参数: $arg" >&2
@@ -125,6 +134,7 @@ cp "$TEMPLATES/src/App.tsx"  src/App.tsx
 # tokens.css 来自所选主题
 cp "$THEME_TOKENS"                          src/styles/tokens.css
 cp "$TEMPLATES/src/styles/base.css"         src/styles/base.css
+cp "$TEMPLATES/src/styles/composition.css"  src/styles/composition.css
 cp "$TEMPLATES/src/styles/animations.css"   src/styles/animations.css
 cp "$TEMPLATES/src/styles/fonts.css"        src/styles/fonts.css
 
@@ -135,12 +145,23 @@ cp "$TEMPLATES/src/hooks/useAutoMode.ts"     src/hooks/useAutoMode.ts
 
 cp "$TEMPLATES/src/components/Stage.tsx"          src/components/Stage.tsx
 cp "$TEMPLATES/src/components/MaskReveal.tsx"     src/components/MaskReveal.tsx
+cp "$TEMPLATES/src/components/LayoutDebug.tsx"    src/components/LayoutDebug.tsx
 cp "$TEMPLATES/src/components/ProgressBar.tsx"    src/components/ProgressBar.tsx
 cp "$TEMPLATES/src/components/ProgressBar.css"    src/components/ProgressBar.css
 cp "$TEMPLATES/src/components/AutoStartGate.tsx"  src/components/AutoStartGate.tsx
 cp "$TEMPLATES/src/components/AutoStartGate.css"  src/components/AutoStartGate.css
 cp "$TEMPLATES/src/components/AutoToggle.tsx"     src/components/AutoToggle.tsx
 cp "$TEMPLATES/src/components/AutoToggle.css"     src/components/AutoToggle.css
+
+# 论文模式公式渲染（可选，仅 --math）：注入 KaTeX + <Math>/<Formula> 组件 +
+# math.css。不传 --math 时整段跳过 —— 脚手架输出与不传时字节一致。
+# （放这里是因为 src/styles 与 src/components 已由上方 mkdir + cp 建好。）
+if [[ "$MATH" == "1" ]]; then
+  echo "▸ 安装 KaTeX（--math：论文模式公式揭示）..."
+  npm install katex >/dev/null 2>&1
+  cp "$TEMPLATES/src/styles/math.css"     src/styles/math.css
+  cp "$TEMPLATES/src/components/Math.tsx" src/components/Math.tsx
+fi
 
 cp "$TEMPLATES/src/registry/types.ts"    src/registry/types.ts
 cp "$TEMPLATES/src/registry/chapters.ts" src/registry/chapters.ts
@@ -155,21 +176,53 @@ cp "$TEMPLATES/scripts/extract-narrations.ts"  scripts/extract-narrations.ts
 cp "$TEMPLATES/scripts/synthesize-audio.sh"    scripts/synthesize-audio.sh
 chmod +x scripts/synthesize-audio.sh
 
+# Visual QA — static analyzer that catches structural layout problems
+# in chapter TSX/CSS before opening a browser. See references/VISUAL-QA.md.
+cp "$TEMPLATES/scripts/inspect-layout.mjs"     scripts/inspect-layout.mjs
+
 mkdir -p scripts/tts-providers
 cp "$TEMPLATES/scripts/tts-providers/README.md"   scripts/tts-providers/README.md
 cp "$TEMPLATES/scripts/tts-providers/minimax.sh"  scripts/tts-providers/minimax.sh
 cp "$TEMPLATES/scripts/tts-providers/openai.sh"   scripts/tts-providers/openai.sh
+cp "$TEMPLATES/scripts/tts-providers/voxcpm.sh"   scripts/tts-providers/voxcpm.sh
+
+# VoxCPM voice-cloning provider — adapter + the persistent model server it
+# talks to, plus the bundled reference voice so cloning is zero-config.
+# (The 4.6G model itself is NOT bundled; the provider auto-detects it in
+# conventional locations — see scripts/voxcpm/voxcpm.env.example to override.)
+mkdir -p scripts/voxcpm/voices
+cp "$TEMPLATES/scripts/voxcpm/voxcpm_server.py"    scripts/voxcpm/voxcpm_server.py
+cp "$TEMPLATES/scripts/voxcpm/voxcpm-setup.sh"     scripts/voxcpm/voxcpm-setup.sh
+cp "$TEMPLATES/scripts/voxcpm/voxcpm.env.example"  scripts/voxcpm/voxcpm.env.example
+cp "$SKILL_DIR/references/voices/sam_voice_ref.wav" scripts/voxcpm/voices/sam_voice_ref.wav
 
 # Wire the audio scripts into npm so contributors don't have to remember
 # the exact command. Uses node to merge into the existing package.json.
-node -e '
+# (--math: 同一个 node 进程里把 math.css 接进 App.tsx，找不到锚点就报错退出。)
+SCAFFOLD_MATH="$MATH" node -e '
 const fs = require("fs");
 const p = JSON.parse(fs.readFileSync("package.json", "utf8"));
 p.scripts = Object.assign({}, p.scripts, {
   "extract-narrations": "tsx scripts/extract-narrations.ts",
   "synthesize-audio":   "bash scripts/synthesize-audio.sh",
+  "layout:check":       "node scripts/inspect-layout.mjs .",
 });
 fs.writeFileSync("package.json", JSON.stringify(p, null, 2) + "\n");
+
+if (process.env.SCAFFOLD_MATH === "1") {
+  const anchor = "import \"./styles/animations.css\";";
+  const appPath = "src/App.tsx";
+  const app = fs.readFileSync(appPath, "utf8");
+  if (!app.includes(anchor)) {
+    console.error("✗ --math: 在 App.tsx 里找不到锚点 " + JSON.stringify(anchor) +
+      " —— 脚手架模板可能已变更，请检查 scripts/scaffold.sh 的 --math 接线。");
+    process.exit(1);
+  }
+  if (!app.includes("styles/math.css")) {
+    fs.writeFileSync(appPath,
+      app.replace(anchor, anchor + "\nimport \"./styles/math.css\"; // KaTeX (--math)"));
+  }
+}
 '
 
 # 留个标记，以后能查这个项目从哪个主题起步的
@@ -184,6 +237,11 @@ if npx tsc --noEmit; then
 else
   echo "✗ typecheck 失败 —— 请看上面的错误" >&2
   exit 1
+fi
+
+if [[ "$MATH" == "1" ]]; then
+  echo "▸ 已启用 KaTeX（--math）：公式用 <Math tex=... /> 或 <Formula step={s} parts=[...] />，"
+  echo "  4 步揭示见 references/PAPER-INTERPRETATION.md §7 与 EXAMPLES/paper-formula-reveal/。"
 fi
 
 cat <<EOF
@@ -225,12 +283,29 @@ cat <<EOF
 写章节时必读（单一入口，路径在 SKILL 仓库内）：
 
   • $SKILL_DIR/references/CHAPTER-CRAFT.md
-      Part 0 十条原则 / Part 1 开工 5 问 / Part 2 关系→动作决策树 /
-      Part 3 视觉工具箱 / Part 4 时长 / Part 5 反 AI 味反模式 /
-      Part 6 代码硬规则 / Part 7 完工自检 / Part 8 反馈速查
+      Part 0 十条原则 / ★ 静态布局阶段 / Part 1 开工 5 问 /
+      Part 2 关系→动作决策树 / Part 3 视觉工具箱 / Part 4 时长 /
+      Part 5 反 AI 味反模式 / Part 6 代码硬规则 / Part 7 完工自检 /
+      Part 8 反馈速查
+  • 视觉规划三件套（首次开工读一次 / 卡壳时翻）：
+      $SKILL_DIR/references/VISUAL-DIRECTION.md
+        8 构图 + 视觉角色 + 英雄帧契约 + 密度 tokens + AI 味清单
+      $SKILL_DIR/references/MOTION-BLUEPRINTS.md
+        10 种论文 / 教学动画节拍
+      $SKILL_DIR/references/VISUAL-QA.md
+        layout:check 机器检查 + ?layout=1 overlay 人工检查 + 修复 catalog
+  • 解读论文（arXiv / 顶会）→ 额外读 $SKILL_DIR/references/PAPER-INTERPRETATION.md
+      （论文类型叙事弧 / 证据层 fact·supported·infer 标注 / 公式 4 步揭示 / 图表复用）
   • $SKILL_DIR/themes/$THEME/theme.json
       看 descriptionZh / mood / bestFor —— 参考主题气质
       （动画 / 时长 / 字号 / emoji 由 chapter agent 在每章自由决定）
+
+视觉自检（每章完工 / 录屏前必走）：
+
+  • npm run layout:check        # 跑 inspect-layout.mjs（结构层机器检查）
+  • 浏览器开 http://localhost:5174/?layout=1
+                                  # 走一遍英雄帧（视觉层人工检查）
+  • 详见 $SKILL_DIR/references/VISUAL-QA.md
 
 卡壳时可翻：
 

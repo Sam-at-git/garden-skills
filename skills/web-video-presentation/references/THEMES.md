@@ -39,7 +39,7 @@
 
 ## 内置主题
 
-23 套主题，每个都有**独立的设计 DNA** —— 不是简单的换色版。挑一个
+24 套主题，每个都有**独立的设计 DNA** —— 不是简单的换色版。挑一个
 匹配你主题情绪的，或者作为你自己主题的起点。
 
 ### 深色主题
@@ -74,6 +74,7 @@
 | `kraft-paper`        | 牛皮纸 —— **深棕当墨** + 牛皮米。Fraunces + Source Serif + 紫铜 accent。老笔记本 / 老信封感。**粗暖纸纹**是签名。慢速 tactile（1.55s）。                                                                       |
 | `dune`               | 沙丘 —— **炭褐当墨** + 沙底 + 几乎无 accent（muted clay）。Inter display + Source Serif 正文。**无装饰 + 极宽 padding（140×100）**是签名。建筑手册 / 画廊感。最慢节奏（1.75s）。                                |
 | `swiss-ikb`          | 瑞士国际主义。**极细 200 weight Inter / Helvetica** + 净暖白底 + IKB 克莱因蓝 + **1px 发丝网格 (64px)**。`r-card: 0` 直角。Massimo Vignelli / Helvetica Forever 能量。punchy + linear（400/650ms）。           |
+| `tufte-ink`          | Tufte 数据墨水学术风。瓷白纸 + 墨黑 Source Serif + 几乎无 accent（一抹学术墙墨蓝）。**超宽 padding（150×110）+ 一条极淡侧注栏 hairline**是签名。hero 数字：斜体 tabular figures。**论文解读 / paper 解读的默认主题**。极静节奏（1.7s）。 |
 
 
 随时列出可用主题：
@@ -238,6 +239,7 @@ CSS"领域 —— 在那里解决，别扩主题契约。
 | B2B / 企业 / 投资人路演                 | `electric-studio`     |
 | 复古朋克 / 创意工作室 / 设计周          | `creative-voltage`    |
 | 学术 / 研究 / 中国当代文化              | `indigo-porcelain`    |
+| 论文解读 / 数据墨水 / Tufte 极简        | `tufte-ink`           |
 | 自然 / 可持续 / 户外 / 纪录             | `forest-ink`          |
 | 文学 / 怀旧 / 书评 / 手工艺             | `kraft-paper`         |
 | 建筑 / 艺术展览 / 高端画廊              | `dune`                |

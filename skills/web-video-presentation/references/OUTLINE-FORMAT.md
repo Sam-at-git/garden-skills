@@ -108,10 +108,18 @@ pull-quote 引用 / 数据浮层。
 > 密度"——靠数字 / 对比 / 元数据等让画面比口播信息密。可以列"画面
 > 装饰元素池"而非"article 抽取池"。
 
+> 📄 **论文输入**：信息池条目应带**定位符**（`§X / Fig Y / Table Z / Eq N`），
+> 并标 claim 类型（论文事实 / 实验支持 / 解读推断）—— 这是论文证据层的
+> 引用源。先做 `paper-digest.md`，再写 outline。详见
+> [`PAPER-INTERPRETATION.md`](PAPER-INTERPRETATION.md) §1（digest）+ §3（证据层）。
+
 ### Step 列表：每步 **1 行**
 
 ```
 - step N (~Ts) — <屏幕内容>
+    purpose: <这一步在讲什么：一个动词 + 一个对象>
+    focal: <观众视线第一站：一件具体物>
+    content relationship: <递进 / 反差 / 收束 / 铺垫 / 揭示 / 持留 / 列举 / 总览>
 ```
 
 | 规则 | 原因 |
@@ -119,9 +127,13 @@ pull-quote 引用 / 数据浮层。
 | `step N` 1-indexed | agent 实现时 `if (step === N - 1) ...`（注意零基偏移） |
 | **`(~Ts)`** 必填 | 按 script.md 本步对应口播段字数 ÷ 4 估算（中文 ~ 4 字/秒）。范围 3~10s |
 | **屏幕内容** | 一句话讲清楚这一步舞台上有什么：hero / 标语 / 数据 / 装饰元素。**≤ 1 行**，再多就该拆 step |
+| **`purpose`（新增，可选但推荐）** | 一个动词 + 一个对象，说明"这一步在做什么"。给 chapter agent 当 hero frame 设计的入手点。完整用法见 [`VISUAL-DIRECTION.md`](VISUAL-DIRECTION.md) §6.1 |
+| **`focal`（新增，可选但推荐）** | 一件具体物（数字 / 图表 / 标题 / 流程图），即观众视线第一站。用于确认 primary 元素 |
+| **`content relationship`（新增，可选但推荐）** | 这一拍与上 / 下拍的关系（递进 / 反差 / 收束 / 铺垫 / 揭示 / 持留 / 列举 / 总览）。用于决定动画蓝图（[`MOTION-BLUEPRINTS.md`](MOTION-BLUEPRINTS.md)） |
 | **不写动画** | 写死 = 翻译机化（详见本文件顶部框） |
 | **不写时长数值 / 错峰量** | 这些在章节开发阶段决定 |
 | **不写实现手段** | filter / SVG / Canvas 选型留给 chapter agent |
+| **不写构图 / 视觉角色** | 这是 [`VISUAL-DIRECTION.md`](VISUAL-DIRECTION.md) 的工作，outline 只声明"做什么 / 看哪里 / 与前后什么关系"，不规定"用什么构图摆" |
 
 
 ### 口播节选（每章末尾，可选但推荐）

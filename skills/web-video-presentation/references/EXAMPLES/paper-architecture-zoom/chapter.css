@@ -1,0 +1,91 @@
+/* ─────────────────────────────────────────────────────────────────
+ * paper-architecture-zoom · whole→local-zoom 布局样式
+ * 默认绑 blueprint 主题。零硬编码视觉属性 —— 全走 token。
+ * ───────────────────────────────────────────────────────────────── */
+
+.az-scene {
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-7);
+}
+
+/* ── 角落出处 chip + 证据层（token-only，内联 fallback）── */
+.az-citation {
+  position: absolute; top: var(--space-7); left: var(--space-9); z-index: 6;
+  color: var(--text-mute); pointer-events: none;
+}
+.az-ev {
+  position: absolute; top: var(--space-7); right: var(--space-9); z-index: 6;
+  padding: 6px 14px; border: var(--bw-1) solid var(--rule); border-radius: var(--r-pill);
+  font-family: var(--font-mono); font-size: var(--t-micro); letter-spacing: var(--track-caps);
+  background: var(--surface-2);
+}
+.az-ev.ev-fact { color: var(--ev-fact, var(--text)); }
+.az-locator {
+  position: absolute; bottom: var(--space-7); left: var(--space-9); z-index: 6;
+  color: var(--text-mute);
+}
+
+/* ── 镜头容器：zoom 时 scale + translate，过渡就是"推进/退回" ── */
+.az-stage {
+  width: 100%;
+  transition: transform var(--dur-slow) var(--ease-quart);
+}
+.az-stage.is-zoomed { transform: scale(1.6) translateX(-22%); }
+
+/* ── 整张地图：input → model → output 横向流程 ── */
+.az-map {
+  display: flex; align-items: center; justify-content: center; gap: var(--space-5);
+}
+.az-box {
+  width: 300px; height: 220px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-3);
+  border: var(--rule-w) var(--rule-style) var(--rule);
+  border-radius: var(--r-card);
+  background: var(--surface-2);
+  font-family: var(--font-display-en); font-size: var(--t-h2);
+  transition: opacity var(--dur-base) var(--ease-quart),
+              filter var(--dur-base) var(--ease-quart),
+              border-color var(--dur-base) var(--ease-quart),
+              box-shadow var(--dur-base) var(--ease-quart);
+}
+.az-box.is-dim { opacity: 0.35; filter: grayscale(0.5); }
+.az-box.is-focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 var(--bw-2) var(--accent-soft);
+}
+.az-box-label { letter-spacing: -0.01em; }
+.az-arrow {
+  font-family: var(--font-display-en); font-size: var(--t-h1); color: var(--text-mute);
+}
+
+/* ── model 内部子模块（step 3 逐个揭示）── */
+.az-submodules { display: flex; gap: var(--space-3); }
+.az-sub {
+  padding: 4px 12px; border-radius: var(--r-pill);
+  font-family: var(--font-mono); font-size: var(--t-micro); letter-spacing: var(--track-caps);
+  border: var(--bw-1) solid var(--rule);
+  transition: opacity var(--dur-base) var(--ease-quart), border-color var(--dur-base) var(--ease-quart);
+}
+.az-sub.is-ghost { opacity: 0.25; }
+.az-sub.is-active { color: var(--accent); border-color: var(--accent); }
+.az-sub.is-on { color: var(--text-mute); }
+
+/* ── step 4 callout 自绘线 ── */
+.az-callout { position: absolute; left: 38%; top: 52%; width: 320px; height: 60px; }
+.az-callout-line {
+  fill: none; stroke: var(--accent); stroke-width: var(--bw-2);
+  stroke-dasharray: 320; stroke-dashoffset: 320;
+  animation: az-draw var(--dur-slow) var(--ease-quart) forwards;
+}
+@keyframes az-draw { to { stroke-dashoffset: 0; } }
+
+/* ── intro / outro hero 文字 ── */
+.az-intro, .az-outro {
+  margin: 0; font-family: var(--font-display-cn); font-size: var(--t-display-2);
+  text-align: center; letter-spacing: -0.01em;
+}
+.az-outro { color: var(--text); }

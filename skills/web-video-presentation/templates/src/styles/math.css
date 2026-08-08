@@ -1,0 +1,33 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * math.css — KaTeX wiring for paper-mode formula reveals (opt-in `--math`).
+ *
+ * This file is copied into a project ONLY when the project is scaffolded with
+ * `--math`; it is imported from App.tsx right after animations.css. It pulls
+ * in KaTeX's own stylesheet (ships inside the `katex` npm package) and adds
+ * two thin wrappers that bind KaTeX output to the active theme's tokens —
+ * no hard-coded color, so it tracks every theme automatically.
+ *
+ * See references/PAPER-INTERPRETATION.md §7 (formula handling) for the
+ * 4-step reveal method and references/EXAMPLES/paper-formula-reveal/.
+ * ───────────────────────────────────────────────────────────────────── */
+@import "katex/dist/katex.min.css";
+
+.math-display,
+.math-inline {
+  color: var(--text);
+  font-feature-settings: "tnum", "lnum";
+}
+.math-display {
+  /* KaTeX scales with font-size; chapters set the size they want on the
+     wrapper. Display blocks center and breathe like a hero figure. */
+  display: flex;
+  justify-content: center;
+  line-height: 1.4;
+}
+.math-inline { display: inline-block; vertical-align: middle; }
+
+/* Symbols "muted" until their reveal step — the chapter toggles .muted on
+   the parts not yet introduced (see Math.tsx). Muted reads as paper ink at
+   low opacity so the whole formula is always structurally visible. */
+.math-display .muted,
+.math-inline .muted { opacity: 0.22; transition: opacity var(--dur-base) var(--ease-quart); }

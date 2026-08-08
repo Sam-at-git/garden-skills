@@ -1,0 +1,28 @@
+{
+  "id": "tufte-ink",
+  "name": "Tufte Ink",
+  "nameZh": "图夫墨",
+  "description": "Porcelain white with ink-black serif and a whisper of academic ink-blue. Edward Tufte data-ink minimalism — wide margins, a faint sidenote column grid, tabular figures, almost-no-accent. For paper interpretation and rigorous academic talks.",
+  "descriptionZh": "Tufte 数据墨水学术风. 瓷白纸 + 墨黑 serif (Source Serif) + 几乎无 accent (仅一抹学术墙墨蓝). 签名: 超宽留白 + 侧注栏网格 + tabular figures. 像 Edward Tufte / 学术 slide 的极简, 最适合论文解读.",
+  "mood": [
+    "light",
+    "academic",
+    "minimal",
+    "serif",
+    "data-ink",
+    "sidenote"
+  ],
+  "bestFor": [
+    "论文解读 / paper 解读",
+    "数据驱动学术汇报",
+    "严谨信息图",
+    "定理 / 证明 sketch",
+    "survey / 综述导览"
+  ],
+  "preview": {
+    "shell": "#eef0f2",
+    "surface": "#fbfcfd",
+    "text": "#0b0f14",
+    "accent": "#2b4a7a"
+  }
+}

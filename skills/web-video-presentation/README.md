@@ -19,6 +19,7 @@ It is designed for:
 - Building product demos, tutorials, keynote-style explainers, and visual talks
 - Creating “dynamic PPT, but not PPT” experiences with strong motion and pacing
 - Optionally synthesizing narration audio after the visual outline is approved
+- **Interpreting research papers (arXiv / conferences / journals)** — opt-in *paper mode* adds an evidence layer (paper fact vs experiment-supported vs narrator-inference, with citation locators), paper-typed narrative arcs, figure/table reuse discipline, and KaTeX formula reveals (`--math`); an optional *silent mode* runs the whole paper pipeline end-to-end on defaults without confirmation pauses
 
 The skill is primarily a **methodology and collaboration workflow**. The scaffold supplies reusable tokens, stage primitives, themes, and examples, but each project should still choose a visual language that fits the topic.
 
@@ -33,8 +34,9 @@ The skill is primarily a **methodology and collaboration workflow**. The scaffol
 - **Hidden chrome** — progress controls are hover-only, keeping recordings clean.
 - **Motion first** — each scene needs a moving visual anchor; static paragraphs are treated as a smell.
 - **Theme tokens** — visual decisions flow through semantic tokens so themes can change the whole feel.
-- **Pluggable TTS** — provider-agnostic audio runner ships **two built-in providers** (MiniMax `mmx-cli` and OpenAI TTS via curl); swap to ElevenLabs / edge-tts / Azure / Google Cloud / macOS `say` / any self-hosted TTS by dropping a single shell file into `tts-providers/`.
+- **Pluggable TTS** — provider-agnostic audio runner ships **three built-in providers** (MiniMax `mmx-cli`, OpenAI TTS via curl, and local VoxCPM voice cloning); swap to ElevenLabs / edge-tts / Azure / Google Cloud / macOS `say` / any self-hosted TTS by dropping a single shell file into `tts-providers/`.
 - **Hard checkpoints** — the agent pauses after script/theme alignment, after outline approval, and before optional audio synthesis.
+- **Paper mode (opt-in)** — when the input is a research paper, an evidence layer labels every on-screen claim as *paper-fact / experiment-supported / narrator-inference* with citation locators (`§X` / `Fig Y` / `Table Z`), plus paper-typed narrative arcs, figure/table reuse discipline, and KaTeX formula reveals via `scaffold --math`. See `references/PAPER-INTERPRETATION.md` and the four `paper-*` examples.
 
 ---
 
@@ -87,7 +89,8 @@ skills/web-video-presentation/
 │   │   └── tts-providers/            # 1 file = 1 TTS backend
 │   │       ├── README.md             # contract + ready-to-paste ElevenLabs / edge-tts / Azure / Google / say snippets
 │   │       ├── minimax.sh            # default — uses mmx-cli
-│   │       └── openai.sh             # built-in — uses OPENAI_API_KEY via curl
+│   │       ├── openai.sh             # built-in — uses OPENAI_API_KEY via curl
+│   │       └── voxcpm.sh             # built-in — local voice cloning (model + ref audio external)
 │   └── src/
 └── themes/                    # 23 themes, each with its own signature
     ├── midnight-press/
@@ -317,6 +320,6 @@ The skill ships **23 themes**, each with its own design DNA — not a simple col
 - [SCRIPT-STYLE.md](./references/SCRIPT-STYLE.md) — article-to-narration rewrite guidance
 - [PATTERNS.md](./references/PATTERNS.md) — optional visual primitive recipes
 - [AUDIO.md](./references/AUDIO.md) — optional narration synthesis workflow (provider-agnostic)
-- [tts-providers/README.md](./templates/scripts/tts-providers/README.md) — TTS provider contract + 2 built-ins (minimax / openai) + ready-to-paste snippets for ElevenLabs / edge-tts / Azure / Google Cloud / macOS say
+- [tts-providers/README.md](./templates/scripts/tts-providers/README.md) — TTS provider contract + 3 built-ins (minimax / openai / voxcpm) + ready-to-paste snippets for ElevenLabs / edge-tts / Azure / Google Cloud / macOS say
 - [RECORDING.md](./references/RECORDING.md) — screen recording and post-production notes
 

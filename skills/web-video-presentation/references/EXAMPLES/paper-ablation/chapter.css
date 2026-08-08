@@ -1,0 +1,72 @@
+/* ─────────────────────────────────────────────────────────────────
+ * paper-ablation · two-col-compare（同坐标轴柱图）样式
+ * 默认绑 tufte-ink 主题。零硬编码视觉属性 —— 全走 token。
+ * ───────────────────────────────────────────────────────────────── */
+
+.pa-scene {
+  color: var(--text);
+  display: flex; flex-direction: column; gap: var(--space-7);
+  padding-top: calc(var(--stage-pad-y) + 40px);
+}
+
+/* ── 出处 chip + 证据层 ── */
+.pa-citation { position: absolute; top: var(--space-7); left: var(--space-9); z-index: 6; color: var(--text-mute); }
+.pa-ev {
+  position: absolute; top: var(--space-7); right: var(--space-9); z-index: 6;
+  padding: 6px 14px; border: var(--bw-1) solid var(--rule); border-radius: var(--r-pill);
+  font-family: var(--font-mono); font-size: var(--t-micro); letter-spacing: var(--track-caps);
+  background: var(--surface-2);
+}
+/* 实验支持 = 唯一强调色（有数据撑腰，权重最高） */
+.pa-ev.ev-supported { color: var(--ev-supported, var(--accent)); border-color: var(--ev-supported, var(--accent)); }
+.pa-locator { position: absolute; bottom: var(--space-7); left: var(--space-9); z-index: 6; color: var(--text-mute); }
+
+/* ── header ── */
+.pa-head { display: flex; flex-direction: column; gap: var(--space-3); }
+.pa-kicker { font-family: var(--font-mono); font-size: var(--t-micro); letter-spacing: var(--track-caps); color: var(--accent); text-transform: uppercase; }
+.pa-title { margin: 0; font-family: var(--font-display-cn); font-size: var(--t-h1); letter-spacing: -0.01em; }
+
+/* ── 同坐标轴柱图 ── */
+.pa-chart {
+  flex: 1; display: grid; grid-template-columns: 64px 1fr; grid-template-rows: 1fr 24px;
+  gap: var(--space-3); min-height: 460px;
+}
+.pa-axis-y { writing-mode: vertical-rl; transform: rotate(180deg); color: var(--text-mute); align-self: center; }
+.pa-bars { display: flex; align-items: flex-end; justify-content: space-around; gap: var(--space-7); border-bottom: var(--rule-w) var(--rule-style) var(--text-mute); }
+.pa-axis-x { grid-column: 2; }
+
+.pa-col {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
+  width: 180px; height: 100%; justify-content: flex-end;
+  transition: opacity var(--dur-base) var(--ease-quart), filter var(--dur-base) var(--ease-quart);
+}
+/* 讲第二根时，基线/前一根灰化作上下文 */
+.pa-col.is-removed { /* 当前被移除的，正常显示 */ }
+.pa-bars .pa-col:not(.is-removed):not(.is-baseline) { opacity: 0.35; filter: grayscale(0.5); }
+
+.pa-delta {
+  font-family: var(--font-display-en); font-style: italic; font-size: var(--t-h2);
+  color: var(--accent);
+  animation: pa-drop var(--dur-base) var(--ease-quart) backwards;
+}
+@keyframes pa-drop { 0% { transform: translateY(-30%); opacity: 0; } 60% { opacity: 1; } 100% { transform: translateY(0); } }
+
+.pa-bar-track { width: 100%; height: 360px; display: flex; flex-direction: column; justify-content: flex-end; position: relative; }
+.pa-bar {
+  width: 100%; border: var(--rule-w) var(--rule-style) var(--rule);
+  background: var(--surface-3);
+  transition: height var(--dur-slow) var(--ease-quart);
+}
+.pa-col.is-baseline .pa-bar { background: var(--accent-soft); border-color: var(--accent); }
+
+/* 方差须：刻意晚揭示（step 4），虚线，弱化色 */
+.pa-whisker {
+  position: absolute; top: -28px; left: 50%; transform: translateX(-50%);
+  font-family: var(--font-mono); font-size: var(--t-micro); color: var(--text-mute);
+  border-top: var(--bw-1) dashed var(--text-mute); padding-top: 2px; width: 70%; text-align: center;
+}
+
+.pa-value { font-family: var(--hero-num-font); font-style: var(--hero-num-style); font-size: var(--t-h2); color: var(--text); }
+.pa-col-label { color: var(--text-mute); }
+
+.pa-takeaway { margin: 0; font-family: var(--font-display-cn); font-size: var(--t-h2); color: var(--text); }

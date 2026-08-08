@@ -1,0 +1,46 @@
+/* ─────────────────────────────────────────────────────────────────
+ * paper-formula-reveal · left-fig-right-explain + KaTeX 样式
+ * 默认绑 tufte-ink 主题。零硬编码视觉属性 —— 全走 token。
+ * （KaTeX 自带样式由 styles/math.css 注入；这里只管布局与点亮。）
+ * ───────────────────────────────────────────────────────────────── */
+
+.pf-scene { color: var(--text); }
+
+/* 出处 chip + 证据层 */
+.pf-citation { position: absolute; top: var(--space-7); left: var(--space-9); z-index: 6; color: var(--text-mute); }
+.pf-ev {
+  position: absolute; top: var(--space-7); right: var(--space-9); z-index: 6;
+  padding: 6px 14px; border: var(--bw-1) solid var(--rule); border-radius: var(--r-pill);
+  font-family: var(--font-mono); font-size: var(--t-micro); letter-spacing: var(--track-caps);
+  background: var(--surface-2);
+}
+.pf-ev.ev-fact { color: var(--ev-fact, var(--text)); }
+.pf-locator { position: absolute; bottom: var(--space-7); left: var(--space-9); z-index: 6; color: var(--text-mute); }
+
+/* 左右分屏：左 ~60% 公式/问题，右 ~40% 图 */
+.pf-split { display: grid; grid-template-columns: 60% 40%; gap: var(--space-9); height: 100%; align-items: center; }
+.pf-left, .pf-right { display: flex; flex-direction: column; gap: var(--space-5); }
+
+.pf-kicker { font-family: var(--font-mono); font-size: var(--t-micro); letter-spacing: var(--track-caps); color: var(--text-mute); text-transform: uppercase; }
+.pf-q { margin: 0; font-family: var(--font-display-cn); font-size: var(--t-display-2); letter-spacing: -0.01em; line-height: 1.1; }
+
+.pf-formula-wrap { display: flex; flex-direction: column; gap: var(--space-5); }
+.pf-formula { font-size: 96px; }                  /* KaTeX 按 font-size 缩放 */
+.pf-plug { color: var(--accent); }
+
+/* 右侧图：Q / K 节点，与公式符号同色同步点亮 */
+.pf-node {
+  align-self: center;
+  width: 200px; height: 200px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2);
+  border: var(--bw-2) var(--rule-style) var(--rule); border-radius: var(--r-pill);
+  font-family: var(--font-display-en); font-style: italic; font-size: var(--t-display-1);
+  color: var(--text-faint);
+  transition: color var(--dur-base) var(--ease-quart), border-color var(--dur-base) var(--ease-quart),
+              background var(--dur-base) var(--ease-quart);
+}
+.pf-node.is-on { color: var(--text); border-color: var(--text); }
+/* Q 节点点亮 = accent（与公式里 Q 同色） */
+.pf-node.pf-q.is-on { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.pf-node-tag { color: var(--text-mute); font-size: var(--t-micro); }
+.pf-line { align-self: center; width: var(--bw-2); height: 48px; background: var(--rule); }
