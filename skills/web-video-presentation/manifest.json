@@ -1,6 +1,6 @@
 {
   "name": "web-video-presentation",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "category": "Web Video / Presentation",
   "description": "Turn scripts, articles, lessons, product demos, and talks into click-driven 16:9 web presentations that can be screen-recorded as cinematic videos. Ships a Vite + React + TypeScript scaffold, a (chapter, step) cursor model, hard collaboration checkpoints, and a theme-token architecture. v1.4 adds a visual-direction layer: 8 content-driven composition primitives, hero-frame contracts before motion, 10 paper/teaching motion blueprints, an `?layout=1` debug overlay, and an `npm run layout:check` static analyzer. Opt-in paper-interpretation mode adds an evidence layer (paper fact vs experiment-supported vs narrator-inference), paper-typed narrative arcs, figure/table reuse discipline, and KaTeX formula reveals via --math.",
   "homepage": "https://github.com/ConardLi/garden-skills/tree/main/skills/web-video-presentation",
