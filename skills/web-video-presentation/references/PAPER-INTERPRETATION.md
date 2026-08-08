@@ -163,12 +163,15 @@ my-paper-video/
 // src/chapters/03-method/evidence.ts
 export type ClaimType = "fact" | "supported" | "infer";
 
-export interface EvidenceMark {
-  step: number;                 // 0-indexed，对齐章节的 step
-  type: ClaimType;
-  locator: string | null;       // "§3.2" | "Fig 4" | "Table 2" | "Eq 7" | null（仅 infer 可 null）
-  note?: string;                // 简注：屏幕上挂的那个数字/论点
-}
+// 类型从组件里 import，不用重复声明：
+//   import type { EvidenceMark } from "../../components/Evidence";
+//
+// export interface EvidenceMark {
+//   step: number;               // 0-indexed，对齐章节的 step
+//   type: ClaimType;
+//   locator: string | null;     // "§3.2" | "Fig 4" | "Table 2" | "Eq 7" | null（仅 infer 可 null）
+//   note?: string;              // 简注：屏幕上挂的那个数字/论点
+// }
 
 export const citation = {
   title: "Memory for Large Language Models",
@@ -183,70 +186,36 @@ export const evidence: EvidenceMark[] = [
 ];
 ```
 
-### 3.3 `Evidence.tsx` 可拷贝片段（放 `src/components/`，全项目共享）
+### 3.3 `<Evidence>` / `<CitationChip>` —— 脚手架自带，不用拷贝
+
+证据层是**随脚手架一起装好的**，不是一段要往项目里粘的代码：
+
+- `src/components/Evidence.tsx` —— 组件 + `EvidenceMark` / `ClaimType` 类型
+- `src/styles/evidence.css` —— 配套样式，已由 `App.tsx` import
+
+用法（`EvidenceMark` 的类型直接从组件里 import，不用另建类型文件）：
 
 ```tsx
-// src/components/Evidence.tsx —— paper 模式证据层。token-only，换主题不破。
-import { useEffect, useState } from "react";
-import type { EvidenceMark } from "../chapters/_evidence-types"; // 或每章自己的 evidence.ts 里的类型
+import { Evidence, CitationChip } from "../../components/Evidence";
+import { evidence, citation } from "./evidence";
 
-const LABEL: Record<EvidenceMark["type"], string> = {
-  fact: "论文事实",
-  supported: "实验支持",
-  infer: "解读推断",
-};
-
-export function Evidence({ step, marks }: { step: number; marks: EvidenceMark[] }) {
-  const m = marks.find((x) => x.step === step);
-  if (!m) return null;
-  return (
-    <>
-      <span className={`ev-badge ev-${m.type}`}>{LABEL[m.type]}</span>
-      {m.locator && <span className="ev-locator label-mono">{m.locator}</span>}
-    </>
-  );
-}
-
-/** 角落常驻出处 chip —— 从 step 1 就挂，配合 cold-open 演问题（§2.1）。 */
-export function CitationChip({ citation }: { citation: { title: string; authors: string; venue: string } }) {
-  return (
-    <div className="ev-citation label-mono">
-      <span className="ev-cit-title">{citation.title}</span>
-      <span className="ev-cit-dot">·</span>
-      <span>{citation.authors}</span>
-      <span className="ev-cit-dot">·</span>
-      <span>{citation.venue}</span>
-    </div>
-  );
-}
+// 章节里，本步该挂哪个 badge 由 step 自动决定
+<Evidence step={step} marks={evidence} />
+<CitationChip citation={citation} />
 ```
 
-配套 CSS（**内联 fallback，默认即对所有主题生效；主题可在 tokens.css 里覆盖 `--ev-*`**）：
+样式是 **token-only、0 新色相**：三类 claim 走 `--ev-fact` /
+`--ev-supported` / `--ev-infer`，全部带内联 fallback（分别退到 `--text` /
+`--accent` / `--text-mute`），所以 24 套主题开箱即用；主题想调就在自己的
+`tokens.css` 里覆盖这三个变量（`tufte-ink` 已经这么做了）。
 
-```css
-/* 证据层 —— token-only，走内联 fallback，0 新色相，所有主题开箱即用。
-   主题想调，在 tokens.css 里覆盖 --ev-fact / --ev-supported / --ev-infer 即可。 */
-.ev-badge {
-  position: absolute; top: var(--space-7, 48px); right: var(--space-9, 96px); z-index: 5;
-  padding: 6px 14px; border: 1px solid var(--rule); border-radius: var(--r-pill, 999px);
-  font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.12em;
-  background: var(--surface-2);
-}
-.ev-fact      { color: var(--ev-fact, var(--text)); }                 /* 中性墨色 */
-.ev-supported { color: var(--ev-supported, var(--accent)); border-color: var(--ev-supported, var(--accent)); } /* 唯一强调 */
-.ev-infer     { color: var(--ev-infer, var(--text-mute)); border-style: dashed; } /* 虚线=讲者之声 */
+claim 类型走 `data-evidence="fact|supported|infer"` 属性 —— 与
+`data-composition` / `data-role` 同一套属性驱动约定，不用 class 变体。
+`infer` 除了颜色更弱，还额外走**虚线边框**，这样即使录屏被转成灰度，
+"这是讲者的推断"这件事也不会丢。
 
-.ev-locator {
-  position: absolute; bottom: var(--space-7, 48px); left: var(--space-9, 96px); z-index: 5;
-  color: var(--text-mute);
-}
-.ev-citation {
-  position: absolute; top: var(--space-7, 48px); left: var(--space-9, 96px); z-index: 5;
-  max-width: 40%; color: var(--text-mute); pointer-events: none;
-}
-.ev-cit-title { color: var(--text-2, var(--text)); }
-.ev-cit-dot { margin: 0 0.4em; opacity: 0.5; }
-```
+badge / locator / citation 的落位用 `--safe-*`（跟随主题的 stage padding），
+不写死 48px —— 宽边距主题（`dune` 150px、`tufte-ink` 110px）下不会贴边。
 
 ### 3.4 三种落位（ASCII）
 
@@ -357,8 +326,13 @@ export function CitationChip({ citation }: { citation: { title: string; authors:
 1. **先演它解决的问题**（大白话，别先上数学）。
 2. **整条公式出现**，所有符号先**弱化**（`.muted`）—— 给结构预览。
 3. **逐个点亮符号**：每个符号配**固定颜色**，且这个颜色**同时点亮**图中对应对象
-   （用 `--accent` / `--ev-*` 等主题色，通过 KaTeX 的 `\textcolor{var(--accent)}{Q}`
-   着色；**同一符号全片同色**）。
+   （用 `--accent` / `--ev-*` 等主题色，走 `<Formula>` 的 `color` 字段；
+   **同一符号全片同色**）。
+   ⚠️ **不要**写 `\textcolor{var(--accent)}{Q}`：KaTeX 的颜色参数只认
+   `#rgb` / `#rrggbb` / 具名色，喂 CSS 变量会抛 `Invalid color`，而组件
+   传的是 `throwOnError: false`，于是**整段 TeX 源码会以 KaTeX 硬编码的
+   `#cc0000` 红色原样打在屏幕上** —— 既不报错也不好查。着色一律在外层
+   元素上做。
 4. **代入一个微数字**，让结果**真的变一次**（不是抽象推导）。
 
 **别**逐字符书写整条公式；**别**花大量时间做纯数学推导。
@@ -375,12 +349,13 @@ bash <skill>/scripts/scaffold.sh ./paper-talk --theme=tufte-ink --math
 
 ```tsx
 import { Formula } from "../../components/Math";
-// 第 3 步点亮 Q（accent），第 4 步点亮 K，第 5 步代入数字
+// step 是 0-indexed：第 3 个 step 点亮 Q，第 4 个点亮 K，第 5 个代入数字。
+// 颜色走 color 字段（组件把它加在包裹 span 上），不要写进 TeX。
 <Formula step={step} parts={[
-  { tex: "\\textcolor{var(--accent)}{Q}",   at: 3 },
-  { tex: "\\cdot",                          at: 3 },
-  { tex: "\\textcolor{var(--accent-2, var(--text))}{K^T}", at: 4 },
-  { tex: "\\Rightarrow 0.83",               at: 5 },
+  { tex: "Q",                at: 2, color: "var(--accent)" },
+  { tex: "\\cdot",           at: 2 },
+  { tex: "K^T",              at: 3, color: "var(--accent-2, var(--text))" },
+  { tex: "\\Rightarrow 0.83", at: 4 },
 ]} />
 ```
 

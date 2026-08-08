@@ -135,6 +135,7 @@ cp "$TEMPLATES/src/App.tsx"  src/App.tsx
 cp "$THEME_TOKENS"                          src/styles/tokens.css
 cp "$TEMPLATES/src/styles/base.css"         src/styles/base.css
 cp "$TEMPLATES/src/styles/composition.css"  src/styles/composition.css
+cp "$TEMPLATES/src/styles/evidence.css"     src/styles/evidence.css
 cp "$TEMPLATES/src/styles/animations.css"   src/styles/animations.css
 cp "$TEMPLATES/src/styles/fonts.css"        src/styles/fonts.css
 
@@ -146,6 +147,7 @@ cp "$TEMPLATES/src/hooks/useAutoMode.ts"     src/hooks/useAutoMode.ts
 cp "$TEMPLATES/src/components/Stage.tsx"          src/components/Stage.tsx
 cp "$TEMPLATES/src/components/MaskReveal.tsx"     src/components/MaskReveal.tsx
 cp "$TEMPLATES/src/components/LayoutDebug.tsx"    src/components/LayoutDebug.tsx
+cp "$TEMPLATES/src/components/Evidence.tsx"       src/components/Evidence.tsx
 cp "$TEMPLATES/src/components/ProgressBar.tsx"    src/components/ProgressBar.tsx
 cp "$TEMPLATES/src/components/ProgressBar.css"    src/components/ProgressBar.css
 cp "$TEMPLATES/src/components/AutoStartGate.tsx"  src/components/AutoStartGate.tsx
@@ -158,7 +160,13 @@ cp "$TEMPLATES/src/components/AutoToggle.css"     src/components/AutoToggle.css
 # （放这里是因为 src/styles 与 src/components 已由上方 mkdir + cp 建好。）
 if [[ "$MATH" == "1" ]]; then
   echo "▸ 安装 KaTeX（--math：论文模式公式揭示）..."
-  npm install katex >/dev/null 2>&1
+  # 不吞错误：装不上就当场停，否则 Math.tsx 会引用一个不存在的包，
+  # 直到最后 tsc / 首次渲染才炸，报错点离真正的原因很远。
+  if ! npm install katex >/dev/null; then
+    echo "✗ --math: npm install katex 失败（见上方 npm 输出）。" >&2
+    echo "  网络/镜像 OK 后重跑脚手架，或手动 npm install katex 再补两个文件。" >&2
+    exit 1
+  fi
   cp "$TEMPLATES/src/styles/math.css"     src/styles/math.css
   cp "$TEMPLATES/src/components/Math.tsx" src/components/Math.tsx
 fi
@@ -195,6 +203,22 @@ cp "$TEMPLATES/scripts/voxcpm/voxcpm_server.py"    scripts/voxcpm/voxcpm_server.
 cp "$TEMPLATES/scripts/voxcpm/voxcpm-setup.sh"     scripts/voxcpm/voxcpm-setup.sh
 cp "$TEMPLATES/scripts/voxcpm/voxcpm.env.example"  scripts/voxcpm/voxcpm.env.example
 cp "$SKILL_DIR/references/voices/sam_voice_ref.wav" scripts/voxcpm/voices/sam_voice_ref.wav
+
+# Everything the audio + QA pipelines generate at runtime. Without these,
+# a single `git add -A` in the project stages the 4.6G VoxCPM model and the
+# multi-GB torch venv that voxcpm-setup.sh downloads, plus voxcpm.env, which
+# contains absolute paths from this machine.
+cat >> .gitignore <<'GITIGNORE'
+
+# ── web-video-presentation: generated / downloaded at runtime ──
+pretrained_models/          # 4.6G VoxCPM2 model (voxcpm-setup.sh)
+.venv-voxcpm/               # torch + voxcpm, multi-GB
+scripts/voxcpm/voxcpm.env   # absolute paths from the machine that ran setup
+scripts/voxcpm/voices/*.wav # voice references — the scaffold re-supplies the
+                            # bundled one; your own belong outside git
+public/audio/               # synthesized narration mp3s
+layout-check.json           # npm run layout:check report
+GITIGNORE
 
 # Wire the audio scripts into npm so contributors don't have to remember
 # the exact command. Uses node to merge into the existing package.json.

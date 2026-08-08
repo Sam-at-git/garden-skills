@@ -1,0 +1,73 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * evidence.css — the paper-mode evidence layer (see components/Evidence.tsx
+ * and references/PAPER-INTERPRETATION.md §3).
+ *
+ * Token-only and hue-free: it introduces no color of its own, it borrows
+ * --text / --accent / --text-mute. Every value has an inline fallback, so
+ * it renders correctly on all 24 built-in themes with no theme changes.
+ * A theme that wants to retune the three claim types overrides
+ * --ev-fact / --ev-supported / --ev-infer in its tokens.css.
+ *
+ * The type is carried by `data-evidence="fact|supported|infer"` — the same
+ * attribute-driven convention as data-composition / data-role.
+ *
+ * Placement uses --safe-side / --safe-top, which track the stage padding
+ * (composition.css §0), so badges land inside the safe area on themes with
+ * wide margins instead of hugging a hard-coded 48px.
+ * ───────────────────────────────────────────────────────────────────── */
+
+.ev-badge {
+  position: absolute;
+  top: var(--safe-top, 80px);
+  right: var(--safe-side, 96px);
+  z-index: var(--depth-accent, 20);
+  padding: 6px 14px;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-pill, 999px);
+  background: var(--surface-2, transparent);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--data-min, 16px);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+/* The paper says so — neutral ink, no emphasis borrowed from the accent. */
+.ev-badge[data-evidence="fact"] {
+  color: var(--ev-fact, var(--text));
+}
+
+/* An experiment shows it — the one place the accent is spent. */
+.ev-badge[data-evidence="supported"] {
+  color: var(--ev-supported, var(--accent));
+  border-color: var(--ev-supported, var(--accent));
+}
+
+/* The narrator's own reading — dashed border reads as "not from the paper"
+   without relying on color, so it survives a grayscale recording. */
+.ev-badge[data-evidence="infer"] {
+  color: var(--ev-infer, var(--text-mute));
+  border-style: dashed;
+  opacity: 0.85;
+}
+
+.ev-locator {
+  position: absolute;
+  bottom: var(--safe-bottom, 80px);
+  left: var(--safe-side, 96px);
+  z-index: var(--depth-accent, 20);
+  color: var(--text-mute);
+  font-size: var(--data-min, 16px);
+}
+
+.ev-citation {
+  position: absolute;
+  top: var(--safe-top, 80px);
+  left: var(--safe-side, 96px);
+  z-index: var(--depth-accent, 20);
+  max-width: 40%;
+  color: var(--text-mute);
+  font-size: var(--data-min, 16px);
+  pointer-events: none;
+}
+.ev-cit-title { color: var(--text-2, var(--text)); }
+.ev-cit-dot   { margin: 0 0.4em; opacity: 0.5; }

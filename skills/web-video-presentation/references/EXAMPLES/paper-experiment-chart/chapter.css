@@ -5,20 +5,9 @@
 
 .pe-scene { color: var(--text); display: flex; flex-direction: column; gap: var(--space-5); padding-top: calc(var(--stage-pad-y) + 40px); }
 
-/* 出处 chip + 证据层（混合：supported + infer 同屏） */
-.pe-citation { position: absolute; top: var(--space-7); left: var(--space-9); z-index: 6; color: var(--text-mute); }
-.pe-ev {
-  position: absolute; top: var(--space-7); right: var(--space-9); z-index: 6;
-  padding: 6px 14px; border: var(--bw-1) solid var(--rule); border-radius: var(--r-pill);
-  font-family: var(--font-mono); font-size: var(--t-micro); letter-spacing: var(--track-caps);
-  background: var(--surface-2);
-}
-.pe-ev.ev-supported { color: var(--ev-supported, var(--accent)); border-color: var(--ev-supported, var(--accent)); }
-/* infer = 虚线 + 弱化（讲者之声，不冒充结论） */
-.pe-ev.ev-infer { color: var(--ev-infer, var(--text-mute)); border-style: dashed; }
-/* 第二个 badge 错开位置，避免与 supported 重叠 */
-.pe-ev-2 { top: calc(var(--space-7) + 44px); }
-.pe-locator { position: absolute; bottom: var(--space-7); left: var(--space-9); z-index: 6; color: var(--text-mute); }
+/* 证据层 badge 样式由 src/styles/evidence.css 提供（<Evidence> 组件），此处不再重复定义。
+   本章唯一特有的是「同屏两个 badge」的错位坐标 —— 只保留定位，不重复颜色/字号/边框。 */
+.pe-ev-2 { top: calc(var(--safe-top, 80px) + 44px); }
 
 /* header */
 .pe-head { display: flex; flex-direction: column; gap: var(--space-3); }
@@ -28,8 +17,23 @@
 /* chart-dominant：图表占主场 */
 .pe-chart { position: relative; flex: 1; min-height: 480px; padding-left: 72px; padding-bottom: 56px; }
 .pe-axis { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.pe-axis-line { stroke: var(--text-mute); stroke-width: 1; stroke-dasharray: 100; stroke-dashoffset: 100; transition: stroke-dashoffset var(--dur-slow) var(--ease-quart); }
-.pe-axis-line.is-drawn { stroke-dashoffset: 0; }
+/* 坐标轴在 step 0 就自绘（章节挂载即播）—— 用 animation 而不是 transition，
+   否则首帧就带着终态 class，过渡不会触发。 */
+.pe-axis-line {
+  stroke: var(--text-mute); stroke-width: 1;
+  stroke-dasharray: 100; stroke-dashoffset: 100;
+  animation: pe-draw-axis var(--dur-slow) var(--ease-quart) forwards;
+}
+@keyframes pe-draw-axis { to { stroke-dashoffset: 0; } }
+
+/* 纵轴刻度 0 / 50 / 100 —— 口播说"从 0 到 100"，画面就得能被观众自己验算。
+   柱高 % 直接等于数值，两根柱子共用这一把尺子，绝不各配一把。 */
+.pe-ticks {
+  position: absolute; left: 0; top: 0; bottom: 56px; width: 60px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  align-items: flex-end; color: var(--text-mute);
+}
+.pe-tick { line-height: 1; }
 
 .pe-bars { position: relative; height: 100%; display: flex; align-items: flex-end; justify-content: space-evenly; gap: var(--space-9); }
 

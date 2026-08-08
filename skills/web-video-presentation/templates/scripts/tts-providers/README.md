@@ -36,7 +36,7 @@ npm run synthesize-audio -- --force
 
 | 文件 | 后端 | 鉴权 | 备注 |
 |---|---|---|---|
-| `voxcpm.sh` | VoxCPM2（本地 / 离线） | 无 key；setup 脚本自动装+下 | **默认 / 声音克隆**；可复刻任意音色，自带常驻 server |
+| `voxcpm.sh` | VoxCPM2（本地 / 离线） | 无 key；但**首次必须先手动跑 `bash scripts/voxcpm/voxcpm-setup.sh`** | **默认 / 声音克隆**；可复刻任意音色，自带常驻 server |
 | `minimax.sh` | MiniMax `mmx` CLI | `mmx auth login --api-key` | 中文口播质量稳（显式 `PRESENTATION_TTS=minimax`） |
 | `openai.sh` | OpenAI Audio Speech API | `OPENAI_API_KEY` env var | curl-based；多数 agent 已有 key |
 
@@ -59,12 +59,20 @@ HTTP server**（模型只加载一次），之后每段合成转发给它。
   `scripts/voxcpm/voices/sam_voice_ref.wav`，并**自动作为默认音色**，零配置；
   想换自己的声音见 `references/voices/README.md`。
 
-启用（voxcpm 是默认 provider；首次跑 setup 自动装+下）：
+启用（voxcpm 是默认 provider，但 setup 是**硬前置**）：
 
 ```bash
-bash scripts/voxcpm/voxcpm-setup.sh   # 自动找/装 python+voxcpm、找/下模型、写配置（idempotent）
-npm run synthesize-audio              # 默认就是 voxcpm
+# 步骤 1（首次必跑，不能跳）—— 自动找/装 python+voxcpm、找/下模型、写配置（idempotent，已就绪则秒过）
+bash scripts/voxcpm/voxcpm-setup.sh
+
+# 步骤 2 —— 默认就是 voxcpm，直接合成
+npm run synthesize-audio
 ```
+
+> ⚠️ **`tts_check` 不会替你跑 setup**。它只做校验：python 里没有 `voxcpm`
+> 模块、或三个常规位置都找不到模型时，直接报错退出（`✗ voxcpm not importable
+> by <python>` / `✗ Couldn't auto-find the VoxCPM2 model.`），**不会**自动
+> 安装或下载。没先跑 `voxcpm-setup.sh` 就合成 = 硬失败。
 
 只有当模型不在常规位置、或想换音色 / python 解释器时，才需要覆盖（写进
 `scripts/voxcpm/voxcpm.env`，provider 自动 source）：
@@ -79,7 +87,7 @@ export VOXCPM_PYTHON=/path/to/venv/bin/python      # 指定解释器
 
 | 变量 | 默认 | 作用 |
 |---|---|---|
-| `VOXCPM_MODEL_PATH` | —— **必须** | 本地 VoxCPM2 目录 |
+| `VOXCPM_MODEL_PATH` | —— **可选**（自动探测） | 本地 VoxCPM2 目录。provider 会依次探测 `./pretrained_models/VoxCPM2` / `~/.cache/huggingface/hub/VoxCPM2` / `~/pretrained_models/VoxCPM2`（认 `model.safetensors`），命中就不用设。**只有三处都没命中时才需要手设** |
 | `VOXCPM_VOICE` | —— 推荐 | 参考音频路径（克隆音色） |
 | `VOXCPM_VOICE_DESIGN` | —— | 不克隆、改用自然语言描述设计音色 |
 | `VOXCPM_PYTHON` | `python3` | 装了 voxcpm 的解释器（venv/conda 全路径） |
@@ -122,6 +130,14 @@ export VOXCPM_PYTHON=/path/to/venv/bin/python      # 指定解释器
 
 启动时被 runner 调一次（不是每段）。检查 CLI 是否装、API key 是否设、auth 是否通。
 未就绪 return 非零，runner 会立刻终止并打印 `tts_install_help`。
+
+> **不只是纯校验**：因为一次运行只调一次，provider 可以在这里做**一次性的重初始化**
+> —— 典型如拉起一个常驻的本地模型 server（内置的 `voxcpm.sh` 就是这么做的：
+> `tts_check` 末尾 `nohup` 起 `voxcpm_server.py` 并轮询 `/health`，最长阻塞
+> `VOXCPM_START_TIMEOUT`（默认 **120 秒**）等模型加载完）。所以调用方应当预期
+> `tts_check` **可能耗时数十秒并留下后台进程**，不要把它当成毫秒级的纯检查。
+> 自己写 provider 时：重初始化要**幂等**（先健康检查、已在跑就直接复用），
+> 并给一个有上限的超时，别无限等。
 
 ### `tts_install_help` （optional）
 

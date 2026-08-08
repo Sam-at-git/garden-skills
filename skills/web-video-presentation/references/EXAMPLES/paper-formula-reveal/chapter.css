@@ -6,16 +6,7 @@
 
 .pf-scene { color: var(--text); }
 
-/* 出处 chip + 证据层 */
-.pf-citation { position: absolute; top: var(--space-7); left: var(--space-9); z-index: 6; color: var(--text-mute); }
-.pf-ev {
-  position: absolute; top: var(--space-7); right: var(--space-9); z-index: 6;
-  padding: 6px 14px; border: var(--bw-1) solid var(--rule); border-radius: var(--r-pill);
-  font-family: var(--font-mono); font-size: var(--t-micro); letter-spacing: var(--track-caps);
-  background: var(--surface-2);
-}
-.pf-ev.ev-fact { color: var(--ev-fact, var(--text)); }
-.pf-locator { position: absolute; bottom: var(--space-7); left: var(--space-9); z-index: 6; color: var(--text-mute); }
+/* 证据层 badge 样式由 src/styles/evidence.css 提供（<Evidence> 组件），此处不再重复定义 */
 
 /* 左右分屏：左 ~60% 公式/问题，右 ~40% 图 */
 .pf-split { display: grid; grid-template-columns: 60% 40%; gap: var(--space-9); height: 100%; align-items: center; }

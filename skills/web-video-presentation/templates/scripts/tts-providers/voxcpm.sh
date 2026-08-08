@@ -189,22 +189,49 @@ tts_synthesize() {
     _voxcpm_ensure_up || return 1
   fi
 
+  # `mktemp -t NAME` is a BSD/macOS spelling. GNU coreutils requires the
+  # template to end in XXXXXX and errors out on a bare name, which left $tmp
+  # as the literal ".wav" in the project root — every segment overwriting the
+  # same file. Give it a full template so both implementations agree.
   local tmp
-  tmp="$(mktemp -t voxcpm).wav"
+  tmp="$(mktemp "${TMPDIR:-/tmp}/voxcpm.XXXXXX.wav")" || {
+    echo "✗ voxcpm: could not create a temp file in ${TMPDIR:-/tmp}" >&2
+    return 1
+  }
   local code=0
 
   # POST raw UTF-8 text as the body; voice goes on the query string
   # (URL-encoded via jq so paths with spaces/special chars are safe).
+  #
+  # The body is piped in as `@-` rather than passed as an argument: curl reads
+  # a --data-binary argument starting with `@` as a FILENAME, so a narration
+  # opening with "@" would make it read a local file instead of the line.
+  #
+  # No `-f`: it suppresses the response body, and the server puts the actual
+  # reason (missing voice, model load failure) in the body of its 500.
+  local http_code
   if [[ -n "$ref" ]]; then
     local enc
     enc="$(printf '%s' "$ref" | jq -sRr @uri)"
-    curl -fsS -m 600 -o "$tmp" -X POST "${BASE_URL}/synthesize?voice=${enc}" \
+    http_code="$(printf '%s' "$text" | curl -sS -m 600 -o "$tmp" -w '%{http_code}' \
+      -X POST "${BASE_URL}/synthesize?voice=${enc}" \
       -H "Content-Type: text/plain; charset=utf-8" \
-      --data-binary "$text" 2>/dev/null || code=$?
+      --data-binary @-)" || code=$?
   else
-    curl -fsS -m 600 -o "$tmp" -X POST "${BASE_URL}/synthesize" \
+    http_code="$(printf '%s' "$text" | curl -sS -m 600 -o "$tmp" -w '%{http_code}' \
+      -X POST "${BASE_URL}/synthesize" \
       -H "Content-Type: text/plain; charset=utf-8" \
-      --data-binary "$text" 2>/dev/null || code=$?
+      --data-binary @-)" || code=$?
+  fi
+
+  # A non-2xx leaves the server's explanation in $tmp — show it instead of
+  # making the user go dig through the log for it.
+  if [[ $code -eq 0 && "$http_code" != 2* ]]; then
+    echo "✗ voxcpm server returned HTTP $http_code:" >&2
+    head -c 500 "$tmp" >&2
+    echo >&2
+    rm -f "$tmp"
+    return 1
   fi
 
   if [[ $code -ne 0 ]]; then

@@ -1,8 +1,6 @@
 ---
 name: web-video-presentation
-description: 把一篇文章或口播稿，做成"看起来像视频"的点击驱动 16:9 网页演示，可选合成口播音频。流程：原始文章 → **一次产出**口播稿 + outline 开发计划 → 用户**一次对齐** 5 件事（稿子 / outline / 主题 / 素材 / 开发模式）→ 网页开发（逐章 / 顺序 / 并行）→ 可选音频合成（provider-agnostic：内置 MiniMax mmx-cli + OpenAI TTS + VoxCPM 声音克隆，可换 ElevenLabs / edge-tts / Azure / 自带 TTS）。**outline 只规划节奏与信息密度，不规划动画** —— 动画由章节开发时按 PRINCIPLES + ANTI-AI 法则即时设计。每次点击推进口播稿的一个节拍，每一步独占整屏，进度条平时隐藏只在悬浮时出现。适用场景：用网页做视频（动态 PPT 但不像 PPT）、把口播稿 / 文章变成可交互的解说、为 B 站 / YouTube / 视频号录屏教程、做有电影感的产品 / talk demo。本 Skill 沉淀的是设计方法论 + 协作流程 —— 不绑定任何特定样式 / 字体 / 颜色 —— 因此能复用到任意主题与美学。**论文解读视频（arXiv / 顶会）额外读
-references/PAPER-INTERPRETATION.md** —— 证据层标注（论文事实 / 实验支持 /
-解读推断）+ 论文类型叙事弧 + 图表复用纪律 + opt-in KaTeX 公式揭示（--math）。
+description: 把一篇文章或口播稿，做成"看起来像视频"的点击驱动 16:9 网页演示，可选合成口播音频。流程：原始文章 → **一次产出**口播稿 + outline 开发计划 → 用户**一次对齐** 5 件事（稿子 / outline / 主题 / 素材 / 开发模式）→ 网页开发（逐章 / 顺序 / 并行）→ 可选音频合成（provider-agnostic：内置 MiniMax mmx-cli + OpenAI TTS + VoxCPM 声音克隆，可换 ElevenLabs / edge-tts / Azure / 自带 TTS）。**outline 只规划节奏与信息密度，不规划动画** —— 动画由章节开发时按 PRINCIPLES + ANTI-AI 法则即时设计。每次点击推进口播稿的一个节拍，每一步独占整屏，进度条平时隐藏只在悬浮时出现。适用场景：用网页做视频（动态 PPT 但不像 PPT）、把口播稿 / 文章变成可交互的解说、为 B 站 / YouTube / 视频号录屏教程、做有电影感的产品 / talk demo。本 Skill 沉淀的是设计方法论 + 协作流程 —— 不绑定任何特定样式 / 字体 / 颜色 —— 因此能复用到任意主题与美学。**论文解读视频（arXiv / 顶会）额外读 references/PAPER-INTERPRETATION.md** —— 证据层标注（论文事实 / 实验支持 / 解读推断）+ 论文类型叙事弧 + 图表复用纪律 + opt-in KaTeX 公式揭示（--math）。
 ---
 
 # Web Video Presentation
@@ -72,9 +70,9 @@ my-video/
     │   ├── synthesize-audio.sh     # provider-agnostic runner（循环 segments）
     │   └── tts-providers/          # 每 provider 一个 .sh（内置 3 个）
     │       ├── README.md           # 三函数契约 + 5 段现成代码片段（11labs / edge-tts / say / azure / gcloud）
-    │       ├── minimax.sh          # 默认 provider，用 mmx-cli
-    │       ├── openai.sh           # 内置 OpenAI TTS（curl + OPENAI_API_KEY）
-    │       └── voxcpm.sh           # 内置本地声音克隆（常驻 server + 参考音频；4.6G 模型外部）
+    │       ├── voxcpm.sh           # ★ 默认 —— 本地声音克隆（常驻 server + 参考音频；4.6G 模型外部）
+    │       ├── minimax.sh          # 中文音色稳，用 mmx-cli（PRESENTATION_TTS=minimax）
+    │       └── openai.sh           # OpenAI TTS（curl + OPENAI_API_KEY；PRESENTATION_TTS=openai）
     ├── audio-segments.json         # extract 产出（合成前 review）
     └── public/audio/<id>/<N>.mp3   # 可选：合成的音频
 ```
@@ -121,15 +119,26 @@ Phase 2.4 的"实现单章"会重复 N 次 —— 每次都要回看核心约束
 | Phase 1.1-1.2 内容编写 | `references/SCRIPT-STYLE.md` + `references/OUTLINE-FORMAT.md` + `article.md`（用户原文，如有） | —— |
 | **Checkpoint Plan 选主题** | —— | `themes/*/theme.json`（动态读全部，列清单 + `bestFor` 推荐 + `descriptionZh`）；`references/THEMES.md`（用户想了解主题系统时） |
 | Phase 2.1 脚手架 | —— | SKILL.md 本节看一次 |
-| **Phase 2.4 实现单章（×N 次，被 2.2 / 2.3 调用）** | **`references/CHAPTER-CRAFT.md`** 单一入口 —— Part 0 十条原则 / ★ 静态布局阶段 / Part 1 开工 5 问 / Part 2 关系→动作决策树 / Part 3 视觉工具箱 / Part 4 时长参考 / Part 5 反 AI 味反模式 / Part 6 代码硬规则（**含 narrations.ts 强制约束**）/ Part 7 完工自检 / Part 8 反馈速查 + **`references/VISUAL-DIRECTION.md`**（构图 / 视觉角色 / 英雄帧 / 密度 / 反 AI 味完整清单）+ **`references/MOTION-BLUEPRINTS.md`**（论文 / 教学常用 10 种动画节拍）+ **`references/VISUAL-QA.md`**（layout-check 机器检查 + ?layout=1 人工检查）+ 当前主题的 `themes/<id>/theme.json` + 当前章节的 outline.md 段落 + **`article.md` 本章对应段落** + 素材清单 | `references/EXAMPLES/`（结构示意，不是抄袭模板）；`references/THEMES.md` 完整 token 契约 |
-| Phase 3 音频合成 | `references/AUDIO.md`（含 narrations.ts → segments.json → 任意 provider 流程，内置 minimax + openai） | `templates/scripts/tts-providers/README.md`（换 provider / 自带 TTS 时） |
+| **Phase 2.4 实现单章（×N 次，被 2.2 / 2.3 调用）** | **`references/CHAPTER-CRAFT.md`** 单一入口 —— Part 0 十条原则 / ★ 静态布局阶段 / Part 1 开工 5 问 / Part 2 关系→动作决策树 / Part 3 视觉工具箱 / Part 4 时长参考 / Part 5 反 AI 味反模式 / Part 6 代码硬规则（**含 narrations.ts 强制约束**）/ Part 7 完工自检 / Part 8 反馈速查 + 当前主题的 `themes/<id>/theme.json` + 当前章节的 outline.md 段落 + **`article.md` 本章对应段落** + 素材清单 | **`VISUAL-DIRECTION.md`**（首次开工读一次建词汇表，之后卡壳回查）；**`MOTION-BLUEPRINTS.md`**（按 content relationship 索引，只读命中的那一条）；**`VISUAL-QA.md`**（工具手册，报了 rule 名再查）；`references/EXAMPLES/`（结构示意，不是抄袭模板）；`references/THEMES.md` 完整 token 契约 |
+| Phase 3 音频合成 | `references/AUDIO.md`（含 narrations.ts → segments.json → 任意 provider 流程，内置 voxcpm / minimax / openai） | `templates/scripts/tts-providers/README.md`（换 provider / 自带 TTS 时） |
 | Phase 4 录屏 + 后期 | `references/RECORDING.md`（含 `?auto=1` 自动录屏） | —— |
 | 选 / 造 / 切主题 | —— | `references/THEMES.md` |
 | 视觉 QA / 调试 | `references/VISUAL-QA.md`（`npm run layout:check` + `?layout=1` overlay） | —— |
 
-> **写章节时只读一份 `CHAPTER-CRAFT.md`**。十条原则 / 开工 self-prompting /
-> 决策树 / 反 AI 味反模式 / 完工自检全部并入这一份单一入口。`EXAMPLES/`
-> **不是必读** —— 先按内容自由设计，卡壳才翻（按 anchor 翻"形"，不要照搬）。
+> **`CHAPTER-CRAFT.md` 是写章节的单一入口**。十条原则 / 开工 self-prompting /
+> 决策树 / 反 AI 味反模式 / 完工自检全部并入这一份，**每章都从它开始**。
+>
+> 另外三份是**按需展开**，不要每章通读一遍：
+> - [`VISUAL-DIRECTION.md`](references/VISUAL-DIRECTION.md) —— **首次开工读一次**
+>   （建立 8 构图 + 视觉角色的词汇表），之后只在选构图卡壳时回查 §1 / §4
+> - [`MOTION-BLUEPRINTS.md`](references/MOTION-BLUEPRINTS.md) —— **按索引读一条**：
+>   照本步的 content relationship 找到对应蓝图，只读那一条，不要通读 10 条
+> - [`VISUAL-QA.md`](references/VISUAL-QA.md) —— **工具手册**：知道跑
+>   `npm run layout:check` 和 `?layout=1` 就够；报了具体 rule 名再按名查对应小节
+>
+> 这么切分是有原因的：Phase 2.4 会重复 N 次，如果四份全量必读，每章要吃掉
+> 一千多行文档。`EXAMPLES/` 同理 —— **不是必读**，先按内容自由设计，卡壳才翻
+> （按 anchor 翻"形"，不要照搬）。
 
 ---
 
@@ -371,8 +380,16 @@ rm -rf presentation/src/chapters/01-example
 - **逐步揭示**：清单 / 列表必须 1 项 = 1 step，禁一次全展示
 - **双源原则**：节奏跟口播稿（顺序不能乱），细节回原文章抽（信息池 +
   本章 article 段落）
-- **每章 scene 根元素加 `data-composition="..."`**（8 个合法值之一）——
-  是 `npm run layout:check` 机器检查 + `?layout=1` 人工检查的命名锚点
+- **每章 scene 根元素加 `data-composition="..."`**（8 个合法值之一），
+  主要元素加 `data-role="primary|secondary|background|annotation"` ——
+  这两个属性是 `npm run layout:check` 机器检查 + `?layout=1` 人工检查的
+  **命名锚点**，光写它们不改变渲染。想让 `composition.css` 的构图真的
+  接管布局，再额外加一个无值属性 `data-composition-layout`（opt-in）。
+  **契约只有 data-\* 属性一套**，不要写 `className="role-primary"`
+- 📄 **论文章节的证据层**：用 `<Evidence step marks>` + `<CitationChip>`
+  （`src/components/Evidence.tsx`，脚手架自带），证据数据放本章
+  `evidence.ts`——**不要塞进 narrations.ts**，那是音频管线的真相源，
+  `extract-narrations.ts` 遇到非字符串会直接抛错
 - **完工自检分三层**（详见 [`references/VISUAL-QA.md`](references/VISUAL-QA.md)）：
   1. **结构层**：`npm run layout:check` 跑 `inspect-layout.mjs`
   2. **视觉层**：开 `?layout=1` debug overlay 逐 step 走英雄帧

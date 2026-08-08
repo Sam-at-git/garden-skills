@@ -68,8 +68,9 @@ Highlights:
 - Click / keyboard driven `(chapter, step)` cursor, with one narration beat per visual step
 - Hard collaboration checkpoints for script, theme, outline, implementation mode, and optional audio
 - Hidden hover-only progress controls so the stage stays clean while recording
-- Theme-token architecture with **23 built-in themes**, each with its own design signature — editorial, terminal, engineering, Swiss International, and more
-- **Pluggable TTS** — provider-agnostic audio runner; ships **two built-in providers** (MiniMax `mmx-cli` + OpenAI TTS via curl) plus a contract + ready-to-paste snippets for ElevenLabs / edge-tts / Azure / Google Cloud / macOS `say`
+- Theme-token architecture with **24 built-in themes**, each with its own design signature — editorial, terminal, engineering, Swiss International, and more
+- **Paper interpretation mode** for arXiv / conference papers — evidence-layer labelling (paper fact / experimental support / interpretive inference), paper-type narrative arcs, figure-reuse discipline, and opt-in KaTeX formula reveals (`--math`)
+- **Pluggable TTS** — provider-agnostic audio runner; ships **three built-in providers** (local VoxCPM voice cloning as the default, MiniMax `mmx-cli`, and OpenAI TTS via curl) plus a contract + ready-to-paste snippets for ElevenLabs / edge-tts / Azure / Google Cloud / macOS `say`
 - Scaffolded Vite + React + TypeScript project with reusable stage primitives and recording guidance
 
 <table>
@@ -81,9 +82,9 @@ Highlights:
 </tr>
 </table>
 
-<a href="./skills/web-video-presentation/README.md#theme-gallery"><img src="https://cdn.jsdelivr.net/gh/ConardLi/assets@main/imgs/web-video/gallery.webp" alt="Theme gallery — 23 built-in themes for web-video-presentation" /></a>
+<a href="./skills/web-video-presentation/README.md#theme-gallery"><img src="https://cdn.jsdelivr.net/gh/ConardLi/assets@main/imgs/web-video/gallery.webp" alt="Theme gallery — 24 built-in themes for web-video-presentation" /></a>
 
-<sub>↑ All 23 themes at a glance — <a href="./skills/web-video-presentation/README.md#theme-gallery"><b>open the full gallery</b></a> for live 16:9 previews, design signatures, and best-for tags.</sub>
+<sub>↑ All 24 themes at a glance — <a href="./skills/web-video-presentation/README.md#theme-gallery"><b>open the full gallery</b></a> for live 16:9 previews, design signatures, and best-for tags.</sub>
 
 Links: [README](./skills/web-video-presentation/README.md) · [SKILL.md](./skills/web-video-presentation/SKILL.md) · <!-- DOWNLOAD:web-video-presentation:start -->[Download v1.2.2 .zip](https://github.com/ConardLi/garden-skills/releases/download/web-video-presentation-v1.2.2/web-video-presentation-1.2.2.zip)<!-- DOWNLOAD:web-video-presentation:end -->
 

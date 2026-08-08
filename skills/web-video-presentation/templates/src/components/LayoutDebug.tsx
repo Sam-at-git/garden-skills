@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 /**
  * LayoutDebug — the ?layout=1 visual QA overlay.
@@ -14,6 +15,14 @@ import { useEffect, useRef, useState } from "react";
  *      root and shows it in the top-left readout, plus the primary /
  *      secondary bbox sizes + coverage %.
  *
+ * It reads the same `data-composition` / `data-role` attributes that
+ * chapters write and that inspect-layout.mjs lints — one contract, no
+ * parallel class-name vocabulary (see styles/composition.css).
+ *
+ * The rulers are portalled into `.stage-frame` so their coordinates are
+ * raw stage px. Rendered as a sibling of <Stage> they would position
+ * against the viewport and be off by the stage's `transform: scale()`.
+ *
  * Keyboard (only active while overlay is on):
  *   L  toggle the entire overlay
  *   G  grid + safe-area only (turn off bbox outlines)
@@ -27,9 +36,29 @@ import { useEffect, useRef, useState } from "react";
  */
 type Mode = "full" | "grid" | "off";
 
+const BBOX = "debug-bbox";
+const BBOX_OVERLAP = "debug-bbox-overlap";
+
+/** Strip every outline class we may have added, anywhere in the document. */
+function clearOutlines() {
+  document
+    .querySelectorAll<HTMLElement>(`.${BBOX}, .${BBOX_OVERLAP}`)
+    .forEach((el) => el.classList.remove(BBOX, BBOX_OVERLAP));
+}
+
 export function LayoutDebug() {
   const [mode, setMode] = useState<Mode>("full");
+  const [stageEl, setStageEl] = useState<HTMLElement | null>(null);
   const readoutRef = useRef<HTMLDivElement>(null);
+
+  // ─── Locate the stage frame to portal the rulers into ───
+  useEffect(() => {
+    if (mode === "off") {
+      setStageEl(null);
+      return;
+    }
+    setStageEl(document.querySelector<HTMLElement>(".stage-frame"));
+  }, [mode]);
 
   // ─── Toggle off all CSS animations while overlay is visible ───
   useEffect(() => {
@@ -56,7 +85,10 @@ export function LayoutDebug() {
 
   // ─── Walk the rendered scene, outline bboxes, compute readouts ───
   useEffect(() => {
-    if (mode === "off") return;
+    if (mode === "off") {
+      clearOutlines();
+      return;
+    }
 
     let frame = 0;
     const tick = () => {
@@ -77,72 +109,63 @@ export function LayoutDebug() {
 
       // Outline every visible descendant.
       const descendants = sceneRoot.querySelectorAll<HTMLElement>("*");
-      const bboxes: { el: HTMLElement; rect: DOMRect }[] = [];
       descendants.forEach((el) => {
         const r = el.getBoundingClientRect();
-        if (r.width < 8 || r.height < 8) return;
-        if (r.right < stageRect.left || r.left > stageRect.right) return;
-        if (r.bottom < stageRect.top || r.top > stageRect.bottom) return;
+        const visible =
+          r.width >= 8 &&
+          r.height >= 8 &&
+          r.right >= stageRect.left &&
+          r.left <= stageRect.right &&
+          r.bottom >= stageRect.top &&
+          r.top <= stageRect.bottom;
 
-        // Apply outline class. Don't overwrite if already outlined.
-        if (mode === "full") {
-          if (!el.classList.contains("debug-bbox")) el.classList.add("debug-bbox");
-        } else {
-          el.classList.remove("debug-bbox");
-        }
-        bboxes.push({ el, rect: r });
+        if (mode === "full" && visible) el.classList.add(BBOX);
+        else el.classList.remove(BBOX);
       });
 
-      // Detect overlap among role-primary / role-secondary bboxes.
-      const roles = sceneRoot.querySelectorAll<HTMLElement>(".role-primary, .role-secondary");
-      roles.forEach((el) => el.classList.remove("debug-bbox-overlap"));
+      // Detect overlap among primary / secondary roles.
+      const roles = sceneRoot.querySelectorAll<HTMLElement>(
+        '[data-role="primary"], [data-role="secondary"]',
+      );
+      roles.forEach((el) => el.classList.remove(BBOX_OVERLAP));
       for (let i = 0; i < roles.length; i++) {
         for (let j = i + 1; j < roles.length; j++) {
           const a = roles[i].getBoundingClientRect();
           const b = roles[j].getBoundingClientRect();
           const overlap =
-            a.left < b.right &&
-            a.right > b.left &&
-            a.top < b.bottom &&
-            a.bottom > b.top;
+            a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
           if (overlap) {
-            roles[i].classList.add("debug-bbox-overlap");
-            roles[j].classList.add("debug-bbox-overlap");
+            roles[i].classList.add(BBOX_OVERLAP);
+            roles[j].classList.add(BBOX_OVERLAP);
           }
         }
       }
 
-      // Optional: hide background role to test if it was load-bearing.
-      if (mode === "full") {
-        const bgEls = sceneRoot.querySelectorAll<HTMLElement>(".role-background");
-        bgEls.forEach((el) => {
-          el.dataset._layoutDebugOrigOpacity = el.dataset._layoutDebugOrigOpacity ?? el.style.opacity ?? "";
-        });
-      }
-
       // Compute primary + secondary coverage.
-      const primaryEl = sceneRoot.querySelector<HTMLElement>(".role-primary");
-      const secondaryEl = sceneRoot.querySelector<HTMLElement>(".role-secondary");
-      const fmt = (el: HTMLElement | null): string => {
-        if (!el) return "—";
+      const primaryEl = sceneRoot.querySelector<HTMLElement>('[data-role="primary"]');
+      const secondaryEl = sceneRoot.querySelector<HTMLElement>('[data-role="secondary"]');
+      const fmt = (el: HTMLElement | null, label: string): string => {
+        if (!el) return `${label}: — (no [data-role="${label}"] in this step)`;
         const r = el.getBoundingClientRect();
         const w = Math.round(r.width);
         const h = Math.round(r.height);
         const pct = Math.round((w * h * 100) / stageArea);
-        return `${w}×${h} (${pct}%)`;
+        return `${label}: ${w}×${h} (${pct}%)`;
       };
 
-      // Update the readout overlay (rendered as React JSX below).
       if (readoutRef.current) {
         readoutRef.current.textContent =
-          `step ${currentStep() ?? "?"} · composition=${composition}\n` +
-          `primary: ${fmt(primaryEl)}\n` +
-          `secondary: ${fmt(secondaryEl)}\n` +
+          `${cursorLabel()} · composition=${composition}\n` +
+          `${fmt(primaryEl, "primary")}\n` +
+          `${fmt(secondaryEl, "secondary")}\n` +
           `[L] overlay · [G] grid · [B] bg · [→] next`;
       }
     };
     tick();
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearOutlines();
+    };
   }, [mode]);
 
   // ─── Keyboard shortcuts ───
@@ -160,18 +183,13 @@ export function LayoutDebug() {
         setMode((m) => (m === "grid" ? "full" : "grid"));
       } else if (e.key === "b" || e.key === "B") {
         e.preventDefault();
-        // Toggle background visibility.
+        // Toggle background visibility to test if it was load-bearing.
         const sceneRoot = document.querySelector(".scene > *") as HTMLElement | null;
-        if (sceneRoot) {
-          const bgEls = sceneRoot.querySelectorAll<HTMLElement>(".role-background");
-          bgEls.forEach((el) => {
-            if (el.style.visibility === "hidden") {
-              el.style.visibility = "";
-            } else {
-              el.style.visibility = "hidden";
-            }
+        sceneRoot
+          ?.querySelectorAll<HTMLElement>('[data-role="background"]')
+          .forEach((el) => {
+            el.style.visibility = el.style.visibility === "hidden" ? "" : "hidden";
           });
-        }
       }
     };
     window.addEventListener("keydown", onKey);
@@ -182,23 +200,30 @@ export function LayoutDebug() {
 
   return (
     <>
-      <div className="debug-safe-area" aria-hidden />
-      <div className="debug-caption-avoid" aria-hidden />
-      {mode === "full" && <div className="debug-thirds" aria-hidden />}
+      {stageEl &&
+        createPortal(
+          <>
+            <div className="debug-safe-area" aria-hidden />
+            <div className="debug-caption-avoid" aria-hidden />
+            {mode === "full" && <div className="debug-thirds" aria-hidden />}
+          </>,
+          stageEl,
+        )}
+      {/* Readout is position: fixed — it belongs to the viewport, not the stage. */}
       <div ref={readoutRef} className="debug-readout" aria-hidden />
     </>
   );
 }
 
 /**
- * Read the current step from a global exposed by App.tsx (for the
+ * Read the current cursor from a global exposed by App.tsx (for the
  * readout text only — the overlay doesn't change behavior on step).
- * Falls back to "?" when not available.
  */
-function currentStep(): string | null {
-  const w = window as unknown as { __presentationStep?: () => number };
-  if (typeof w.__presentationStep === "function") {
-    return String(w.__presentationStep());
-  }
-  return null;
+function cursorLabel(): string {
+  const w = window as unknown as {
+    __presentationCursor?: () => { chapter: number; step: number };
+  };
+  if (typeof w.__presentationCursor !== "function") return "step ?";
+  const { chapter, step } = w.__presentationCursor();
+  return `ch ${chapter} · step ${step}`;
 }

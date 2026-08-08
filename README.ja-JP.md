@@ -68,8 +68,9 @@
 - クリック / キーボード駆動の `(chapter, step)` カーソル、ビジュアルステップごとに 1 つのナレーションビート
 - スクリプト、テーマ、アウトライン、実装モード、オプションの音声に対する厳格なコラボレーションチェックポイント
 - 録画中もステージをクリーンに保つ、ホバー時のみ表示される進捗コントロール
-- **23 種類のビルトインテーマ**（`midnight-press` から `swiss-ikb` まで）を備えたテーマトークンアーキテクチャ。エディトリアル、ターミナル、エンジニアリング、スイス国際主義など、各テーマが独自のデザインシグネチャを持つ
-- **プラガブル TTS**：プロバイダー非依存の音声ランナー。**2 つのビルトインプロバイダー**（MiniMax `mmx-cli` + curl 経由の OpenAI TTS）を同梱し、ElevenLabs / edge-tts / Azure / Google Cloud / macOS `say` 用のコピペ可能なスニペットも付属
+- **24 種類のビルトインテーマ**（`midnight-press` から `tufte-ink` まで）を備えたテーマトークンアーキテクチャ。エディトリアル、ターミナル、エンジニアリング、スイス国際主義など、各テーマが独自のデザインシグネチャを持つ
+- **論文解説モード**（arXiv / 主要国際会議の論文向け）：エビデンス層のラベリング（論文の事実 / 実験による裏付け / 解釈による推論）、論文タイプ別のナラティブアーク、図表の再利用規律、オプトインの KaTeX 数式リビール（`--math`）
+- **プラガブル TTS**：プロバイダー非依存の音声ランナー。**3 つのビルトインプロバイダー**（デフォルトのローカル VoxCPM ボイスクローニング、MiniMax `mmx-cli`、curl 経由の OpenAI TTS）を同梱し、ElevenLabs / edge-tts / Azure / Google Cloud / macOS `say` 用のコピペ可能なスニペットも付属
 - 再利用可能なステージプリミティブと録画ガイダンスを備えた Vite + React + TypeScript プロジェクトのスキャフォールド
 
 <table>
@@ -81,9 +82,9 @@
 </tr>
 </table>
 
-<a href="./skills/web-video-presentation/README.md#theme-gallery"><img src="https://cdn.jsdelivr.net/gh/ConardLi/assets@main/imgs/web-video/gallery.webp" alt="web-video-presentation のテーマギャラリー — 23 種類のビルトインテーマ" /></a>
+<a href="./skills/web-video-presentation/README.md#theme-gallery"><img src="https://cdn.jsdelivr.net/gh/ConardLi/assets@main/imgs/web-video/gallery.webp" alt="web-video-presentation のテーマギャラリー — 24 種類のビルトインテーマ" /></a>
 
-<sub>↑ 23 種類のテーマを一望 — <a href="./skills/web-video-presentation/README.md#theme-gallery"><b>完全なギャラリーを開く</b></a>と、ライブ 16:9 プレビュー、デザインシグネチャ、用途タグ付きで閲覧できます。</sub>
+<sub>↑ 24 種類のテーマを一望 — <a href="./skills/web-video-presentation/README.md#theme-gallery"><b>完全なギャラリーを開く</b></a>と、ライブ 16:9 プレビュー、デザインシグネチャ、用途タグ付きで閲覧できます。</sub>
 
 リンク: [README](./skills/web-video-presentation/README.md) · [SKILL.md](./skills/web-video-presentation/SKILL.md) · <!-- DOWNLOAD:web-video-presentation:start -->[Download v1.2.2 .zip](https://github.com/ConardLi/garden-skills/releases/download/web-video-presentation-v1.2.2/web-video-presentation-1.2.2.zip)<!-- DOWNLOAD:web-video-presentation:end -->
 

@@ -34,7 +34,7 @@
 - **隐藏 chrome**：进度控制悬浮才出现，录屏画面保持干净。
 - **动效优先**：每一步都需要一个移动的视觉锚点，静态正文是坏味道。
 - **主题 token**：视觉属性通过语义 token 驱动，换主题不只是换颜色。
-- **可插拔 TTS**：provider-agnostic 音频 runner，**内置 3 个 provider**（MiniMax `mmx-cli` + OpenAI TTS + 本地 VoxCPM 声音克隆）；往 `tts-providers/` 丢一个 `.sh` 就能换成 ElevenLabs / edge-tts / Azure / Google Cloud / macOS `say` / 任何自部署 TTS。
+- **可插拔 TTS**：provider-agnostic 音频 runner，**内置 3 个 provider**（本地 VoxCPM 声音克隆 —— 默认 + MiniMax `mmx-cli` + OpenAI TTS）；往 `tts-providers/` 丢一个 `.sh` 就能换成 ElevenLabs / edge-tts / Azure / Google Cloud / macOS `say` / 任何自部署 TTS。
 - **硬 checkpoint**：稿子/主题、outline、音频合成前都必须停下来与用户确认。
 - **论文模式（opt-in）**：输入是论文时，证据层把每个屏幕论点标成 *论文事实 / 实验支持 / 解读推断*，并挂定位符（`§X` / `Fig Y` / `Table Z`）；另有论文类型叙事弧、图表复用纪律、KaTeX 公式揭示（`scaffold --math`）。详见 `references/PAPER-INTERPRETATION.md` 与 4 个 `paper-*` 示例。
 
@@ -88,11 +88,11 @@ skills/web-video-presentation/
 │   │   ├── synthesize-audio.sh       # provider-agnostic runner
 │   │   └── tts-providers/            # 一个文件 = 一个 TTS 后端
 │   │       ├── README.md             # 三函数契约 + ElevenLabs / edge-tts / Azure / Google / say 的现成片段
-│   │       ├── minimax.sh            # 默认 provider（mmx-cli）
-│   │       ├── openai.sh             # 内置：OpenAI TTS（curl + OPENAI_API_KEY）
-│   │       └── voxcpm.sh             # 内置：本地声音克隆（模型 + 参考音频外部）
+│   │       ├── voxcpm.sh             # 默认 provider：本地声音克隆（模型 + 参考音频外部）
+│   │       ├── minimax.sh            # 内置：mmx-cli；显式 PRESENTATION_TTS=minimax 启用
+│   │       └── openai.sh             # 内置：OpenAI TTS（curl + OPENAI_API_KEY）
 │   └── src/
-└── themes/                    # 23 套主题，每套独立设计签名
+└── themes/                    # 24 套主题，每套独立设计签名
     ├── midnight-press/
     ├── warm-keynote/
     ├── newsroom/
@@ -124,7 +124,7 @@ bash skills/web-video-presentation/scripts/scaffold.sh --list-themes
 
 ## 主题画廊
 
-Skill 内置 **23 套**主题，每套都有独立的设计 DNA —— 不是简单换色版。下面按底色分两组浏览，挑一套接近目标气质的，或者把任意一格当作派生新主题的起点。点击任意预览图可放大查看 1920×1080 原帧。
+Skill 内置 **24 套**主题，每套都有独立的设计 DNA —— 不是简单换色版。下面按底色分两组浏览，挑一套接近目标气质的，或者把任意一格当作派生新主题的起点。点击任意预览图可放大查看 1920×1080 原帧。
 
 > 所有截图都是真实的 16:9 舞台，来自 [`demo/web-video-presentation-demo`](../../demo/web-video-presentation-demo/) 现场画廊。
 
@@ -191,7 +191,7 @@ Skill 内置 **23 套**主题，每套都有独立的设计 DNA —— 不是简
 </tr>
 </table>
 
-### 浅色 · 15 套
+### 浅色 · 16 套
 
 > 明亮编辑画布 —— 适合清晰、克制、带纸感温度的内容。
 
@@ -301,7 +301,15 @@ Skill 内置 **23 套**主题，每套都有独立的设计 DNA —— 不是简
 <br /><sub>50/50 双底色 · 蜜桃左 + 薰衣草右</sub>
 <br /><sub><b>适合</b> · 双主题对比 / 辩论 · 故事讲述 · 概念对照科普</sub>
 </td>
-<td align="center" width="50%" valign="middle">
+<td align="center" width="50%">
+<a href="https://cdn.jsdelivr.net/gh/ConardLi/assets@main/imgs/web-video/tufte-ink.webp"><img src="https://cdn.jsdelivr.net/gh/ConardLi/assets@main/imgs/web-video/tufte-ink.webp" alt="tufte-ink 预览" /></a>
+<br /><strong><code>tufte-ink</code> · 图夫墨</strong>
+<br /><sub>Tufte 数据墨水 · 瓷白纸 + 墨黑 serif + 侧注栏 hairline</sub>
+<br /><sub><b>适合</b> · 论文解读 · 数据驱动学术汇报 · 定理 / 证明 sketch</sub>
+</td>
+</tr>
+<tr>
+<td align="center" colspan="2" valign="middle">
 <br />
 <strong>+ 派生你自己的</strong>
 <br /><sub>完整 token 契约、每套设计签名、<br />以及怎么派生新主题（Swiss 黄 / 绿 / 橙变体等），<br />见 <a href="./references/THEMES.md">THEMES.md</a>。</sub>

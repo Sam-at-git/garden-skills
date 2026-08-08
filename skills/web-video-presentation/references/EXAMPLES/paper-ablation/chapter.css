@@ -9,25 +9,16 @@
   padding-top: calc(var(--stage-pad-y) + 40px);
 }
 
-/* ── 出处 chip + 证据层 ── */
-.pa-citation { position: absolute; top: var(--space-7); left: var(--space-9); z-index: 6; color: var(--text-mute); }
-.pa-ev {
-  position: absolute; top: var(--space-7); right: var(--space-9); z-index: 6;
-  padding: 6px 14px; border: var(--bw-1) solid var(--rule); border-radius: var(--r-pill);
-  font-family: var(--font-mono); font-size: var(--t-micro); letter-spacing: var(--track-caps);
-  background: var(--surface-2);
-}
-/* 实验支持 = 唯一强调色（有数据撑腰，权重最高） */
-.pa-ev.ev-supported { color: var(--ev-supported, var(--accent)); border-color: var(--ev-supported, var(--accent)); }
-.pa-locator { position: absolute; bottom: var(--space-7); left: var(--space-9); z-index: 6; color: var(--text-mute); }
+/* 证据层 badge 样式由 src/styles/evidence.css 提供（<Evidence> 组件），此处不再重复定义 */
 
 /* ── header ── */
 .pa-head { display: flex; flex-direction: column; gap: var(--space-3); }
 .pa-kicker { font-family: var(--font-mono); font-size: var(--t-micro); letter-spacing: var(--track-caps); color: var(--accent); text-transform: uppercase; }
 .pa-title { margin: 0; font-family: var(--font-display-cn); font-size: var(--t-h1); letter-spacing: -0.01em; }
 
-/* ── 同坐标轴柱图 ── */
+/* ── 同坐标轴柱图（截断轴 68–88，见 .pa-axis-break）── */
 .pa-chart {
+  position: relative;
   flex: 1; display: grid; grid-template-columns: 64px 1fr; grid-template-rows: 1fr 24px;
   gap: var(--space-3); min-height: 460px;
 }
@@ -35,14 +26,29 @@
 .pa-bars { display: flex; align-items: flex-end; justify-content: space-around; gap: var(--space-7); border-bottom: var(--rule-w) var(--rule-style) var(--text-mute); }
 .pa-axis-x { grid-column: 2; }
 
+/* 截断标记：Y 轴根部两道斜杠 = "0–68 这段被剪掉了"。
+   纵轴不从 0 起时这个标记是**强制**的（PAPER-INTERPRETATION.md §9 第 1 条）。 */
+.pa-axis-break {
+  /* 骑在基线左端上：把基线剪断，读作"下面还有 0–68 没画" */
+  position: absolute; left: 56px; bottom: 24px; z-index: 2;
+  width: 34px; height: 26px; background: var(--surface);
+}
+.pa-axis-break::before,
+.pa-axis-break::after {
+  content: ""; position: absolute; left: 4px; width: 26px;
+  border-top: var(--bw-2) solid var(--text-mute);
+  transform: rotate(-22deg);
+}
+.pa-axis-break::before { top: 7px; }
+.pa-axis-break::after  { top: 16px; }
+
 .pa-col {
   display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
   width: 180px; height: 100%; justify-content: flex-end;
   transition: opacity var(--dur-base) var(--ease-quart), filter var(--dur-base) var(--ease-quart);
 }
-/* 讲第二根时，基线/前一根灰化作上下文 */
-.pa-col.is-removed { /* 当前被移除的，正常显示 */ }
-.pa-bars .pa-col:not(.is-removed):not(.is-baseline) { opacity: 0.35; filter: grayscale(0.5); }
+/* 讲下一根时，上一根灰化保留作上下文（揭示阶段结束后复位） */
+.pa-col.is-context { opacity: 0.35; filter: grayscale(0.5); }
 
 .pa-delta {
   font-family: var(--font-display-en); font-style: italic; font-size: var(--t-h2);
@@ -59,7 +65,7 @@
 }
 .pa-col.is-baseline .pa-bar { background: var(--accent-soft); border-color: var(--accent); }
 
-/* 方差须：刻意晚揭示（step 4），虚线，弱化色 */
+/* 方差须：刻意晚揭示（step 3），虚线，弱化色 */
 .pa-whisker {
   position: absolute; top: -28px; left: 50%; transform: translateX(-50%);
   font-family: var(--font-mono); font-size: var(--t-micro); color: var(--text-mute);

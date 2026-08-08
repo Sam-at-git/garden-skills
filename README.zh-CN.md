@@ -68,8 +68,9 @@
 - 点击 / 键盘驱动 `(chapter, step)` 游标，一个口播节拍对应一个视觉 step
 - 在稿子、主题、outline、开发模式和可选音频合成前设置硬 checkpoint
 - 悬浮才出现的进度控制，录屏时画面保持干净
-- 基于主题 token 的视觉架构，内置 **23 套主题**，每套独立设计签名，覆盖编辑、终端、工程、瑞士国际主义等多种风格
-- **可插拔 TTS**：provider-agnostic 音频 runner，**内置 2 个 provider**（MiniMax `mmx-cli` + OpenAI TTS via curl），并附带三函数契约 + ElevenLabs / edge-tts / Azure / Google Cloud / macOS `say` 的现成代码片段
+- 基于主题 token 的视觉架构，内置 **24 套主题**，每套独立设计签名，覆盖编辑、终端、工程、瑞士国际主义等多种风格
+- **论文解读模式**（arXiv / 顶会论文）：证据层标注（论文事实 / 实验支持 / 解读推断）+ 论文类型叙事弧 + 图表复用纪律 + opt-in KaTeX 公式揭示（`--math`）
+- **可插拔 TTS**：provider-agnostic 音频 runner，**内置 3 个 provider**（本地 VoxCPM 声音克隆为默认 + MiniMax `mmx-cli` + OpenAI TTS via curl），并附带三函数契约 + ElevenLabs / edge-tts / Azure / Google Cloud / macOS `say` 的现成代码片段
 - 脚手架产出 Vite + React + TypeScript 项目，并附带舞台原语与录屏指南
 
 <table>
@@ -81,9 +82,9 @@
 </tr>
 </table>
 
-<a href="./skills/web-video-presentation/README.zh-CN.md#主题画廊"><img src="https://cdn.jsdelivr.net/gh/ConardLi/assets@main/imgs/web-video/gallery.webp" alt="web-video-presentation 主题画廊 —— 23 套内置主题一览" /></a>
+<a href="./skills/web-video-presentation/README.zh-CN.md#主题画廊"><img src="https://cdn.jsdelivr.net/gh/ConardLi/assets@main/imgs/web-video/gallery.webp" alt="web-video-presentation 主题画廊 —— 24 套内置主题一览" /></a>
 
-<sub>↑ 23 套主题一览 —— <a href="./skills/web-video-presentation/README.zh-CN.md#主题画廊"><b>打开完整画廊</b></a>，含真实预览图、设计签名与适合场景标签。</sub>
+<sub>↑ 24 套主题一览 —— <a href="./skills/web-video-presentation/README.zh-CN.md#主题画廊"><b>打开完整画廊</b></a>，含真实预览图、设计签名与适合场景标签。</sub>
 
 链接：[README](./skills/web-video-presentation/README.zh-CN.md) · [SKILL.md](./skills/web-video-presentation/SKILL.md) · <!-- DOWNLOAD:web-video-presentation:start -->[下载 v1.2.2 .zip](https://github.com/ConardLi/garden-skills/releases/download/web-video-presentation-v1.2.2/web-video-presentation-1.2.2.zip)<!-- DOWNLOAD:web-video-presentation:end -->
 

@@ -11,9 +11,29 @@
  *   5. Debug primitives (rulers / safe-area boxes / bbox outlines) for
  *      the ?layout=1 mode
  *
- * Conventions — chapters consume these instead of writing per-step grids
- * from scratch. Each step's scene root carries `data-composition="..."`
- * so inspect-layout.mjs and the LayoutDebug overlay can name it.
+ * ── The contract: data-* attributes, never class names ──
+ *
+ *   <div data-composition="split-screen">        naming anchor only
+ *     <div data-role="primary">…</div>
+ *     <div data-role="secondary">…</div>
+ *   </div>
+ *
+ * `data-composition` NAMES the step's composition. That name is what
+ * `npm run layout:check` (inspect-layout.mjs) lints and what the
+ * ?layout=1 overlay reads — the same attribute, one contract, no
+ * parallel class-name vocabulary.
+ *
+ * Naming a composition does NOT lay the scene out. Add the valueless
+ * `data-composition-layout` attribute to opt into the grid below:
+ *
+ *   <div data-composition="split-screen" data-composition-layout>
+ *
+ * Two reasons it is opt-in rather than automatic: a chapter that
+ * already positions its own scene (most of them — see .scene-pad in
+ * base.css) would be silently re-laid-out by an attribute it added for
+ * QA purposes; and the eight primitives are a starting vocabulary, not
+ * a mandate. `data-role` alone is always safe — it only carries depth
+ * and recession, never geometry.
  *
  * Composition vs layout primitives in base.css:
  *   base.css provides .row / .stack / .fill / .center / .scene-pad —
@@ -34,10 +54,14 @@
   --data-min:     16px;       /* data label / corner mark / locator */
   --micro-min:    12px;       /* only for true meta (corner folio) */
 
-  /* Stage safe area — content should stay within this box. */
-  --safe-top:     80px;
-  --safe-bottom:  80px;
-  --safe-side:    80px;
+  /* Stage safe area — content should stay within this box.
+     Derived from the stage padding base.css/themes already use, so the
+     ?layout=1 safe-area ruler measures the same box the content is
+     actually laid out in. Overridable on its own if a chapter wants a
+     tighter guide than its padding. */
+  --safe-top:     var(--stage-pad-y, 80px);
+  --safe-bottom:  var(--stage-pad-y, 80px);
+  --safe-side:    var(--stage-pad-x, 80px);
 
   /* Maximum text width — long titles/body wrap inside this. */
   --max-text-width: 60ch;     /* body */
@@ -65,7 +89,7 @@
 /* 1.1 centered-hero ─────────────────────────────────────────
    Single focal point, centered. Hero number / big quote / concept
    name. Everything else is decoration around it. */
-.composition-centered-hero {
+[data-composition="centered-hero"][data-composition-layout] {
   position: absolute;
   inset: 0;
   padding: var(--safe-top) var(--safe-side) var(--safe-bottom);
@@ -73,14 +97,14 @@
   place-items: center;
   text-align: center;
 }
-.composition-centered-hero > .role-primary { grid-area: 1 / 1; }
-.composition-centered-hero > .role-secondary { grid-area: 1 / 1; align-self: end; opacity: 0.85; }
+[data-composition="centered-hero"][data-composition-layout] > [data-role="primary"] { grid-area: 1 / 1; }
+[data-composition="centered-hero"][data-composition-layout] > [data-role="secondary"] { grid-area: 1 / 1; align-self: end; opacity: 0.85; }
 
 /* 1.2 asymmetric-60-40 ───────────────────────────────────────
    Two-column where the primary occupies ~60% width on the left,
    secondary on the right. Used for architecture diagram + caption,
    paper chart + interpretation. */
-.composition-asymmetric-60-40 {
+[data-composition="asymmetric-60-40"][data-composition-layout] {
   position: absolute;
   inset: 0;
   padding: var(--safe-top) var(--safe-side) var(--safe-bottom);
@@ -89,15 +113,15 @@
   gap: var(--space-7, 48px);
   align-items: center;
 }
-.composition-asymmetric-60-40 > .role-primary  { grid-column: 1; }
-.composition-asymmetric-60-40 > .role-secondary { grid-column: 2; }
-.composition-asymmetric-60-40 > .role-background,
-.composition-asymmetric-60-40 > .role-annotation { grid-column: 1 / -1; }
+[data-composition="asymmetric-60-40"][data-composition-layout] > [data-role="primary"]  { grid-column: 1; }
+[data-composition="asymmetric-60-40"][data-composition-layout] > [data-role="secondary"] { grid-column: 2; }
+[data-composition="asymmetric-60-40"][data-composition-layout] > [data-role="background"],
+[data-composition="asymmetric-60-40"][data-composition-layout] > [data-role="annotation"] { grid-column: 1 / -1; }
 
 /* 1.3 split-screen ───────────────────────────────────────────
    Two equal halves, hard center division. For baseline-vs-method,
    success-vs-failure, A-vs-B. */
-.composition-split-screen {
+[data-composition="split-screen"][data-composition-layout] {
   position: absolute;
   inset: 0;
   padding: var(--safe-top) var(--safe-side) var(--safe-bottom);
@@ -106,9 +130,9 @@
   gap: 0;
   align-items: center;
 }
-.composition-split-screen > .role-primary  { grid-column: 1; padding-right: var(--space-7, 48px); }
-.composition-split-screen > .role-secondary { grid-column: 2; padding-left: var(--space-7, 48px); }
-.composition-split-screen::before {
+[data-composition="split-screen"][data-composition-layout] > [data-role="primary"]  { grid-column: 1; padding-right: var(--space-7, 48px); }
+[data-composition="split-screen"][data-composition-layout] > [data-role="secondary"] { grid-column: 2; padding-left: var(--space-7, 48px); }
+[data-composition="split-screen"][data-composition-layout]::before {
   /* center divider — thin rule that themes can restyle */
   content: "";
   grid-column: 1 / -1;
@@ -124,7 +148,7 @@
 /* 1.4 rule-of-thirds ─────────────────────────────────────────
    Primary at a one-third intersection, secondary anchoring the
    opposite third. Use for "main visual + short caption". */
-.composition-rule-of-thirds {
+[data-composition="rule-of-thirds"][data-composition-layout] {
   position: absolute;
   inset: 0;
   padding: var(--safe-top) var(--safe-side) var(--safe-bottom);
@@ -133,13 +157,13 @@
   grid-template-rows: 1fr 1fr 1fr;
   gap: var(--space-5, 24px);
 }
-.composition-rule-of-thirds > .role-primary {
+[data-composition="rule-of-thirds"][data-composition-layout] > [data-role="primary"] {
   grid-column: 1 / 3;
   grid-row: 2 / 4;
   align-self: end;
   justify-self: start;
 }
-.composition-rule-of-thirds > .role-secondary {
+[data-composition="rule-of-thirds"][data-composition-layout] > [data-role="secondary"] {
   grid-column: 3;
   grid-row: 1 / 3;
   align-self: start;
@@ -151,7 +175,7 @@
 /* 1.5 full-width-strip ───────────────────────────────────────
    Horizontal flow from edge to edge. Used for token sequences,
    timelines, algorithm steps, count-up bars. */
-.composition-full-width-strip {
+[data-composition="full-width-strip"][data-composition-layout] {
   position: absolute;
   inset: 0;
   padding: var(--safe-top) var(--safe-side) var(--safe-bottom);
@@ -159,14 +183,14 @@
   flex-direction: column;
   justify-content: center;
 }
-.composition-full-width-strip > .role-primary {
+[data-composition="full-width-strip"][data-composition-layout] > [data-role="primary"] {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-5, 24px);
 }
-.composition-full-width-strip > .role-secondary {
+[data-composition="full-width-strip"][data-composition-layout] > [data-role="secondary"] {
   width: 100%;
   margin-top: var(--space-4, 16px);
 }
@@ -175,7 +199,7 @@
    Foreground + background with explicit depth separation.
    Used for openings, abstract concepts, mechanism overviews.
    Background layer should have opacity ≤ 0.2 to stay non-competing. */
-.composition-layered-depth {
+[data-composition="layered-depth"][data-composition-layout] {
   position: absolute;
   inset: 0;
   padding: var(--safe-top) var(--safe-side) var(--safe-bottom);
@@ -184,7 +208,7 @@
   grid-template-rows: 1fr;
   place-items: center;
 }
-.composition-layered-depth > .role-background {
+[data-composition="layered-depth"][data-composition-layout] > [data-role="background"] {
   grid-area: 1 / 1;
   z-index: var(--depth-bg);
   opacity: 0.18;
@@ -194,11 +218,11 @@
   display: grid;
   place-items: center;
 }
-.composition-layered-depth > .role-primary {
+[data-composition="layered-depth"][data-composition-layout] > [data-role="primary"] {
   grid-area: 1 / 1;
   z-index: var(--depth-content);
 }
-.composition-layered-depth > .role-secondary {
+[data-composition="layered-depth"][data-composition-layout] > [data-role="secondary"] {
   grid-area: 1 / 1;
   z-index: var(--depth-content);
   align-self: end;
@@ -209,7 +233,7 @@
 /* 1.7 triptych ───────────────────────────────────────────────
    Three strict columns. Three-way comparison, three examples,
    three evidence pieces. */
-.composition-triptych {
+[data-composition="triptych"][data-composition-layout] {
   position: absolute;
   inset: 0;
   padding: var(--safe-top) var(--safe-side) var(--safe-bottom);
@@ -218,14 +242,14 @@
   gap: var(--space-5, 24px);
   align-items: stretch;
 }
-.composition-triptych > .role-primary  { grid-column: 2; }
-.composition-triptych > .role-secondary { grid-column: 1; }
-.composition-triptych > .role-annotation { grid-column: 3; }
+[data-composition="triptych"][data-composition-layout] > [data-role="primary"]  { grid-column: 2; }
+[data-composition="triptych"][data-composition-layout] > [data-role="secondary"] { grid-column: 1; }
+[data-composition="triptych"][data-composition-layout] > [data-role="annotation"] { grid-column: 3; }
 
 /* 1.8 diagram-canvas ─────────────────────────────────────────
    Free-canvas for flow diagrams, model architectures, node networks.
    Uses padding + flex for positioning rather than absolute coords. */
-.composition-diagram-canvas {
+[data-composition="diagram-canvas"][data-composition-layout] {
   position: absolute;
   inset: 0;
   padding: calc(var(--safe-top) + 32px) var(--safe-side) calc(var(--safe-bottom) + 32px);
@@ -234,54 +258,59 @@
   justify-content: center;
   align-items: center;
 }
-.composition-diagram-canvas > .role-background {
+[data-composition="diagram-canvas"][data-composition-layout] > [data-role="background"] {
   position: absolute;
   inset: 0;
   z-index: var(--depth-bg);
   opacity: 0.08;
   pointer-events: none;
 }
-.composition-diagram-canvas > .role-primary {
+[data-composition="diagram-canvas"][data-composition-layout] > [data-role="primary"] {
   width: 100%;
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.composition-diagram-canvas > .role-secondary {
+[data-composition="diagram-canvas"][data-composition-layout] > [data-role="secondary"] {
   margin-top: var(--space-5, 24px);
   max-width: 56ch;
   text-align: center;
 }
 
 /* ─── 2. Visual role modifiers ─── */
-/* These are class-based shortcuts for the role attribute. Chapters
-   add these to elements that play each role. They primarily carry
-   z-index depth, opacity defaults, and reading-order hints — they
-   do NOT force colors or sizes (themes + chapter CSS own those). */
+/* Chapters put `data-role` on the element that plays each role. These
+   rules carry depth and recession ONLY — never geometry, colors, or
+   sizes (themes + chapter CSS own those), so adding a role can't
+   re-lay-out a scene.
 
-.role-background {
+   Deliberately NOT here: a font-size floor per role. A role marks a
+   CONTAINER, and a floor on the container hits everything inside it —
+   a primary block holding a kicker, an h1 and a footnote would have all
+   three forced to the headline minimum. Apply a floor to the specific
+   text element with .text-floor-headline / -body / -data (§3).
+   (The earlier `font-size: max(var(--font-size, inherit), …)` was also
+   invalid CSS — `inherit` is a keyword and can't appear inside max() —
+   so it was dropped by the parser and never took effect.) */
+
+[data-role="background"] {
   z-index: var(--depth-bg);
   /* Default: stay quiet. Chapters can override opacity for stronger
      backgrounds (e.g. radial glow). */
 }
 
-.role-primary {
+[data-role="primary"] {
   z-index: var(--depth-content);
-  /* Primary is the visual focus — minimum font-size floor. */
-  font-size: max(var(--font-size, inherit), var(--headline-min));
 }
 
-.role-secondary {
+[data-role="secondary"] {
   z-index: var(--depth-content);
-  font-size: max(var(--font-size, inherit), var(--body-min));
   /* Default secondary opacity — slightly recessed. */
   opacity: 0.92;
 }
 
-.role-annotation {
+[data-role="annotation"] {
   z-index: var(--depth-accent);
-  font-size: max(var(--font-size, inherit), var(--data-min));
   font-family: var(--font-mono, ui-monospace, monospace);
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -313,8 +342,18 @@
 .stagger-item { animation-delay: calc(var(--i, 0) * var(--stagger-step)); }
 
 /* ─── 5. Debug primitives (used by LayoutDebug.tsx via ?layout=1) ─── */
-/* These are utility classes the debug overlay injects onto the DOM
-   to draw rulers and bboxes. They are NOT used by chapters. */
+/* Utility classes the debug overlay injects onto the DOM to draw rulers
+   and bboxes. NOT used by chapters.
+
+   The rulers are portalled INTO `.stage-frame` (see LayoutDebug.tsx), so
+   `position: absolute` resolves against the raw 1920×1080 frame and these
+   offsets are in stage px. Rendered outside it they would resolve against
+   the viewport instead and be wrong by the stage's `transform: scale()` —
+   which is every viewport that isn't exactly 1920 wide.
+
+   The outline classes are scoped to `.layout-debug-mode` (set on <body>
+   while the overlay is on) so a stray class left on an element can't
+   outlive the overlay. */
 
 .debug-safe-area {
   position: absolute;
@@ -344,11 +383,11 @@
     linear-gradient(to right, transparent 0%, transparent 33.33%, rgba(80, 160, 255, 0.25) 33.33%, rgba(80, 160, 255, 0.25) 33.5%, transparent 33.5%, transparent 66.66%, rgba(80, 160, 255, 0.25) 66.66%, rgba(80, 160, 255, 0.25) 66.83%, transparent 66.83%, transparent 100%),
     linear-gradient(to bottom, transparent 0%, transparent 33.33%, rgba(80, 160, 255, 0.25) 33.33%, rgba(80, 160, 255, 0.25) 33.5%, transparent 33.5%, transparent 66.66%, rgba(80, 160, 255, 0.25) 66.66%, rgba(80, 160, 255, 0.25) 66.83%, transparent 66.83%, transparent 100%);
 }
-.debug-bbox {
+.layout-debug-mode .debug-bbox {
   outline: 1px solid rgba(80, 220, 120, 0.6);
   outline-offset: -1px;
 }
-.debug-bbox-overlap {
+.layout-debug-mode .debug-bbox-overlap {
   outline: 2px solid rgba(255, 80, 80, 0.8);
   outline-offset: -2px;
 }

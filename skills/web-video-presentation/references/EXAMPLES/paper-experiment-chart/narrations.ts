@@ -1,15 +1,15 @@
-// paper-experiment-chart · narrations —— 长度 === step 数（5）。
-const narrations: string[] = [
-  // step 1 —— 立坐标
+// paper-experiment-chart · narrations —— step 数 + 音频的唯一真相源。
+// 长度 === step 数（5）；step 是 0-indexed，有效 step 为 0..4，
+// 即 narrations[i] 就是 chapter.tsx 里 step === i 那一屏的口播。
+export const narrations: string[] = [
+  // step 0 —— 立坐标
   "看实验之前，先把坐标轴立好。纵轴是准确率，从 0 到 100。",
-  // step 2 —— 基线先长
+  // step 1 —— 基线先长
   "先把基线画出来——两年前的老方法，71.4。这是要超越的对象。",
-  // step 3 —— 本文方法
+  // step 2 —— 本文方法
   "再看本文方法。同一把尺子，86.2。确实高出一截。",
-  // step 4 —— 差值 + 方差
+  // step 3 —— 差值 + 方差
   "差了快 15 分。两边都有正负零点几的方差——这点提升，不是抖出来的。",
-  // step 5 —— 公不公平（讲者评价 = 解读推断）
+  // step 4 —— 公不公平（讲者评价 = 解读推断）
   "数据是真的强。但说句实话：基线是两年前的老方法，这个对比到底公不公平——这是我的看法，论文自己没下这个结论。",
 ];
-
-export default narrations;

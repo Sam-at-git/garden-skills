@@ -34,7 +34,7 @@ The skill is primarily a **methodology and collaboration workflow**. The scaffol
 - **Hidden chrome** — progress controls are hover-only, keeping recordings clean.
 - **Motion first** — each scene needs a moving visual anchor; static paragraphs are treated as a smell.
 - **Theme tokens** — visual decisions flow through semantic tokens so themes can change the whole feel.
-- **Pluggable TTS** — provider-agnostic audio runner ships **three built-in providers** (MiniMax `mmx-cli`, OpenAI TTS via curl, and local VoxCPM voice cloning); swap to ElevenLabs / edge-tts / Azure / Google Cloud / macOS `say` / any self-hosted TTS by dropping a single shell file into `tts-providers/`.
+- **Pluggable TTS** — provider-agnostic audio runner ships **three built-in providers** (local VoxCPM voice cloning — the default; MiniMax `mmx-cli`; OpenAI TTS via curl); swap to ElevenLabs / edge-tts / Azure / Google Cloud / macOS `say` / any self-hosted TTS by dropping a single shell file into `tts-providers/`.
 - **Hard checkpoints** — the agent pauses after script/theme alignment, after outline approval, and before optional audio synthesis.
 - **Paper mode (opt-in)** — when the input is a research paper, an evidence layer labels every on-screen claim as *paper-fact / experiment-supported / narrator-inference* with citation locators (`§X` / `Fig Y` / `Table Z`), plus paper-typed narrative arcs, figure/table reuse discipline, and KaTeX formula reveals via `scaffold --math`. See `references/PAPER-INTERPRETATION.md` and the four `paper-*` examples.
 
@@ -88,11 +88,11 @@ skills/web-video-presentation/
 │   │   ├── synthesize-audio.sh       # provider-agnostic runner
 │   │   └── tts-providers/            # 1 file = 1 TTS backend
 │   │       ├── README.md             # contract + ready-to-paste ElevenLabs / edge-tts / Azure / Google / say snippets
-│   │       ├── minimax.sh            # default — uses mmx-cli
-│   │       ├── openai.sh             # built-in — uses OPENAI_API_KEY via curl
-│   │       └── voxcpm.sh             # built-in — local voice cloning (model + ref audio external)
+│   │       ├── voxcpm.sh             # default — local voice cloning (model + ref audio external)
+│   │       ├── minimax.sh            # built-in — uses mmx-cli; opt in with PRESENTATION_TTS=minimax
+│   │       └── openai.sh             # built-in — uses OPENAI_API_KEY via curl
 │   └── src/
-└── themes/                    # 23 themes, each with its own signature
+└── themes/                    # 24 themes, each with its own signature
     ├── midnight-press/
     ├── warm-keynote/
     ├── newsroom/
@@ -124,7 +124,7 @@ The generated `presentation/` project is a normal Vite + React + TypeScript app.
 
 ## Theme Gallery
 
-The skill ships **23 themes**, each with its own design DNA — not a simple color swap. Browse the gallery below by canvas tone, pick one that fits the topic, or use any tile as a starting point for a derived theme. Click any preview to open the full-size 1920×1080 frame.
+The skill ships **24 themes**, each with its own design DNA — not a simple color swap. Browse the gallery below by canvas tone, pick one that fits the topic, or use any tile as a starting point for a derived theme. Click any preview to open the full-size 1920×1080 frame.
 
 > Frames are real 16:9 stages rendered by the live demo gallery at [`demo/web-video-presentation-demo`](../../demo/web-video-presentation-demo/).
 
@@ -191,7 +191,7 @@ The skill ships **23 themes**, each with its own design DNA — not a simple col
 </tr>
 </table>
 
-### Light · 15 themes
+### Light · 16 themes
 
 > Bright editorial canvases — for clarity, restraint, and the warmth of printed paper.
 
@@ -301,7 +301,15 @@ The skill ships **23 themes**, each with its own design DNA — not a simple col
 <br /><sub>Dual-tone · peach left + lavender right</sub>
 <br /><sub><b>Best for</b> · A/B comparisons · dialogue stories · concept-contrast explainers</sub>
 </td>
-<td align="center" width="50%" valign="middle">
+<td align="center" width="50%">
+<a href="https://cdn.jsdelivr.net/gh/ConardLi/assets@main/imgs/web-video/tufte-ink.webp"><img src="https://cdn.jsdelivr.net/gh/ConardLi/assets@main/imgs/web-video/tufte-ink.webp" alt="tufte-ink preview" /></a>
+<br /><strong><code>tufte-ink</code></strong>
+<br /><sub>Tufte data-ink · porcelain white + ink-black serif + sidenote hairline</sub>
+<br /><sub><b>Best for</b> · paper interpretation · academic data talks · theorem / proof sketches</sub>
+</td>
+</tr>
+<tr>
+<td align="center" colspan="2" valign="middle">
 <br />
 <strong>+ derive your own</strong>
 <br /><sub>See <a href="./references/THEMES.md">THEMES.md</a> for the token contract,<br />theme signatures, and Swiss yellow / green / orange variants.</sub>

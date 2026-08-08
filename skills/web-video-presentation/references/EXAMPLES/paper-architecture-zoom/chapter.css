@@ -12,22 +12,7 @@
   gap: var(--space-7);
 }
 
-/* ── 角落出处 chip + 证据层（token-only，内联 fallback）── */
-.az-citation {
-  position: absolute; top: var(--space-7); left: var(--space-9); z-index: 6;
-  color: var(--text-mute); pointer-events: none;
-}
-.az-ev {
-  position: absolute; top: var(--space-7); right: var(--space-9); z-index: 6;
-  padding: 6px 14px; border: var(--bw-1) solid var(--rule); border-radius: var(--r-pill);
-  font-family: var(--font-mono); font-size: var(--t-micro); letter-spacing: var(--track-caps);
-  background: var(--surface-2);
-}
-.az-ev.ev-fact { color: var(--ev-fact, var(--text)); }
-.az-locator {
-  position: absolute; bottom: var(--space-7); left: var(--space-9); z-index: 6;
-  color: var(--text-mute);
-}
+/* 证据层 badge 样式由 src/styles/evidence.css 提供（<Evidence> 组件），此处不再重复定义 */
 
 /* ── 镜头容器：zoom 时 scale + translate，过渡就是"推进/退回" ── */
 .az-stage {
@@ -62,7 +47,7 @@
   font-family: var(--font-display-en); font-size: var(--t-h1); color: var(--text-mute);
 }
 
-/* ── model 内部子模块（step 3 逐个揭示）── */
+/* ── model 内部子模块（step 2 逐个揭示）── */
 .az-submodules { display: flex; gap: var(--space-3); }
 .az-sub {
   padding: 4px 12px; border-radius: var(--r-pill);
@@ -74,7 +59,7 @@
 .az-sub.is-active { color: var(--accent); border-color: var(--accent); }
 .az-sub.is-on { color: var(--text-mute); }
 
-/* ── step 4 callout 自绘线 ── */
+/* ── step 3 callout 自绘线 ── */
 .az-callout { position: absolute; left: 38%; top: 52%; width: 320px; height: 60px; }
 .az-callout-line {
   fill: none; stroke: var(--accent); stroke-width: var(--bw-2);

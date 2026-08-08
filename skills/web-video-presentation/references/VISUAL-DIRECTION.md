@@ -47,20 +47,70 @@
 
 ### 1.2 八个构图的 CSS 原语
 
+**统一用 `data-*` 属性，不用 class。** 构图和视觉角色都是"这个元素是什么"
+的语义声明，属性选择器（`[data-composition="..."]`）比 class 更能表达这层
+含义，也让 `layout:check`（静态扫源码）和 `?layout=1`（运行时读 DOM）用
+**同一套契约**，不会出现"CSS 认 class、检查器认属性"的分裂。
+
 [`templates/src/styles/composition.css`](../templates/src/styles/composition.css)
-已实现全部八个（class 名见该文件），开箱即用：
+已实现全部八个，开箱即用。**在每步 scene 根元素上声明构图名**：
 
-```
-.composition-centered-hero      composition-asymmetric-60-40
-.composition-split-screen       composition-rule-of-thirds
-.composition-full-width-strip   composition-layered-depth
-.composition-triptych           composition-diagram-canvas
+```tsx
+<div className="scene-pad" data-composition="centered-hero">
 ```
 
-每章 TSX 在场景根上加对应 class（或直接在已有 `.scene` 根上叠加）。
-**主视觉 / 次级 / 背景 / 注释元素**分别打 `.role-primary` /
-`.role-secondary` / `.role-background` / `.role-annotation` —— 这样
-`?layout=1` debug overlay 能直接读出每步的视觉骨架。
+八个合法值：
+
+```
+centered-hero        asymmetric-60-40
+split-screen         rule-of-thirds
+full-width-strip     layered-depth
+triptych             diagram-canvas
+```
+
+**主视觉 / 次级 / 背景 / 注释元素**分别打 `data-role="primary"` /
+`data-role="secondary"` / `data-role="background"` / `data-role="annotation"`：
+
+```tsx
+<div className="scene-pad" data-composition="asymmetric-60-40">
+  <div className="ch-grid"    data-role="background" />
+  <figure className="ch-chart" data-role="primary">…</figure>
+  <p className="ch-caption"    data-role="secondary">…</p>
+  <span className="label-mono" data-role="annotation">Fig 3 · §4.2</span>
+</div>
+```
+
+这样 `?layout=1` debug overlay 和 `npm run layout:check` 都能直接读出每步
+的视觉骨架。
+
+#### `data-composition` vs `data-composition-layout`（重要）
+
+这两件事是分开的，别混：
+
+| 你写的 | 效果 |
+|---|---|
+| `data-composition="split-screen"` | **只是命名锚点**。给 `npm run layout:check` 和 `?layout=1` 读出"这步用的是什么构图"，用于构图重复检查、bbox 归因、readout 显示。**不影响任何渲染** —— 布局仍然完全由你自己的 chapter CSS 决定 |
+| `data-composition="split-screen" data-composition-layout` | **额外 opt-in**：composition.css 里对应那条布局规则接管这一步的布局（grid / padding / 安全区 / role 定位都由它给） |
+
+`data-composition-layout` 是**无值属性**（写上即生效，不需要 `="true"`）。
+
+也就是说：**8 条构图布局规则是 opt-in 的**。默认只声明 `data-composition`
+时，composition.css 不会碰你的布局 —— 想让它接管，才额外加
+`data-composition-layout`。
+
+```tsx
+{/* A. 只做语义标注：布局归 chapter CSS 自己管（默认、最常用） */}
+<div className="ch-split" data-composition="split-screen">…</div>
+
+{/* B. 让 composition.css 直接给布局：省掉手写 grid */}
+<div data-composition="split-screen" data-composition-layout>
+  <div data-role="primary">…</div>
+  <div data-role="secondary">…</div>
+</div>
+```
+
+即使走 A（不接管布局），**`data-composition` 也仍然是必填的** ——
+`layout:check` 把"根元素没有 `data-composition`"判为 fail。
 
 ---
 
@@ -274,7 +324,9 @@ Part 7 完工自检（含本文件 §3.2 英雄帧验收）
 1. **选构图**：从 §1 八个里选一个（不知道选哪个就 `centered-hero`
    起手，最稳）
 2. **标角色**：在 JSX 根元素加 `data-composition="..."`，primary
-   元素加 `className="role-primary"`，其他同理
+   元素加 `data-role="primary"`，其他同理（`secondary` / `background` /
+   `annotation`）。想让 composition.css 直接给布局，再在根元素补一个
+   `data-composition-layout`（见 §1.2）
 3. **写静态英雄帧**：先不加任何 animation / transition，写完打开
    `?layout=1` 走一遍所有 step，看主视觉占位、留白方向、出界
 4. **加最小动画**：primary 用一个 600ms 的入场；其他元素按内容

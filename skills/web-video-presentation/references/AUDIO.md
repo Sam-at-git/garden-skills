@@ -14,8 +14,8 @@ Auto 模式会自动按 step 播放并自动推进——录屏可以一镜到底
 
 | Provider | 默认 | 何时用 |
 |---|---|---|
-| `voxcpm`  | ✓ | **默认 / 本地离线声音克隆**；复刻任意音色（首次 setup 自动装+下模型） |
-| `minimax` | —— | 中文口播首选（用 `mmx-cli`，要 MiniMax API key） |
+| `voxcpm`  | ✓ | **默认 / 本地离线声音克隆**；复刻任意音色。**首次必须先跑 `scripts/voxcpm/voxcpm-setup.sh`**（装 voxcpm + 下模型） |
+| `minimax` | —— | 中文音色最稳，但要 MiniMax API key（用 `mmx-cli`）。显式 `PRESENTATION_TTS=minimax` 启用 |
 | `openai`  | —— | 多数 agent 已有 `OPENAI_API_KEY`；curl-based、响应快 |
 
 换 / 加 provider 见
@@ -77,18 +77,49 @@ npm run extract-narrations
 ls scripts/tts-providers/    # 看本项目带了哪些
 ```
 
-- 用默认 `minimax` → 走 [2.A](#2a-用内置-minimax-合成)
-- 用内置 `openai` → 走 [2.B](#2b-用内置-openai-合成)
-- 想克隆某个人的声音 / 本地离线 → 走 [用内置 voxcpm 克隆声音合成](#用内置-voxcpm-克隆声音合成)
-- 想用别的 TTS / 自带 TTS → 走 [2.C](#2c-换-provider--加自定义-provider)
-- 一个都没装好 → 走 [2.D](#2d-退化路径)
+- 用默认 `voxcpm`（本地离线 / 克隆某个人的声音） → 走 [2.A](#2a-用默认-voxcpm-克隆声音合成)
+- 用内置 `minimax`（中文音色更稳，要 MiniMax key） → 走 [2.B](#2b-用内置-minimax-合成)
+- 用内置 `openai` → 走 [2.C](#2c-用内置-openai-合成)
+- 想用别的 TTS / 自带 TTS → 走 [2.D](#2d-换-provider--加自定义-provider)
+- 一个都没装好 → 走 [2.E](#2e-退化路径)
 
-#### 2.A 用内置 minimax 合成
+#### 2.A 用默认 voxcpm 克隆声音合成
+
+VoxCPM2 = 本地、离线、可克隆任意音色的 TTS（2B，48kHz，30 语言），是本 skill 的
+**默认 provider**（`synthesize-audio.sh` 里 `PRESENTATION_TTS` 缺省即 `voxcpm`）。
+模型 4.6G 不打包，但 setup 脚本会自动找/装/下。模型加载要 ~9s，provider 会拉起
+**常驻 server**（模型只加载一次），之后每段合成转发给它。
 
 ```bash
-npm run synthesize-audio              # 增量：跳过已存在的 mp3
+bash scripts/voxcpm/voxcpm-setup.sh   # 首次必跑：自动找/装 python+voxcpm、找/下模型、写配置（已就绪则秒过）
+npm run synthesize-audio              # 默认 voxcpm；用克隆声音念全部 step
 npm run synthesize-audio -- --force   # 全部重合成
-npm run synthesize-audio -- --voice=<voice-id>  # 指定音色
+```
+
+> **`voxcpm-setup.sh` 是硬前置**：`tts_check` 只做校验、**不会**替你跑 setup。
+> 没跑过 setup（python 里没有 voxcpm、或找不到模型）就直接合成 = 立刻失败。
+
+setup 会写好 `scripts/voxcpm/voxcpm.env`（python / 模型 / 声音路径），之后就零配置。
+只有模型在别处 / 想换音色或解释器时才手动改该文件：`VOXCPM_MODEL_PATH` /
+`VOXCPM_VOICE` / `VOXCPM_PYTHON`。换音色见 `references/voices/README.md`。
+
+可选 env：`VOXCPM_PYTHON`（装了 voxcpm 的解释器，conda/venv 全路径）、
+`VOXCPM_DEVICE`（默认 `auto`，Mac 走 mps）、`VOXCPM_PORT`（`8765`）、
+`VOXCPM_CFG`/`VOXCPM_STEPS`（`2.0`/`10`）。完整说明见
+`scripts/tts-providers/README.md` 的 VoxCPM 段。
+
+`--voice=<wav>` 可临时换参考音频（覆盖 `VOXCPM_VOICE`）。想用自己的
+声音克隆见 `references/voices/README.md`。
+
+#### 2.B 用内置 minimax 合成
+
+中文音色最稳，但要 MiniMax API key，且**必须显式指定** `PRESENTATION_TTS=minimax`
+（默认走的是 voxcpm）：
+
+```bash
+PRESENTATION_TTS=minimax npm run synthesize-audio              # 增量：跳过已存在的 mp3
+PRESENTATION_TTS=minimax npm run synthesize-audio -- --force   # 全部重合成
+PRESENTATION_TTS=minimax npm run synthesize-audio -- --voice=<voice-id>  # 指定音色
 ```
 
 启动时 runner 会先调 provider 的 `tts_check`：
@@ -106,7 +137,7 @@ npm run synthesize-audio -- --voice=<voice-id>  # 指定音色
 合成串行（避免 rate limit），**自动跳过已存在文件**（断点续合，不烧
 重复 token）。
 
-#### 2.B 用内置 openai 合成
+#### 2.C 用内置 openai 合成
 
 ```bash
 export OPENAI_API_KEY=sk-...                   # 在 platform.openai.com 拿
@@ -127,30 +158,7 @@ OPENAI_TTS_MODEL=tts-1-hd PRESENTATION_TTS=openai \
 
 `tts_check` 会检查 curl / jq / `OPENAI_API_KEY` 三件套，缺哪个报哪个。
 
-#### 用内置 voxcpm 克隆声音合成
-
-VoxCPM2 = 本地、离线、可克隆任意音色的 TTS（2B，48kHz，30 语言），是本 skill 的
-**默认 provider**。模型 4.6G 不打包，但 setup 脚本会自动找/装/下。模型加载要 ~9s，
-provider 会拉起**常驻 server**（模型只加载一次），之后每段合成转发给它。
-
-```bash
-bash scripts/voxcpm/voxcpm-setup.sh   # 首次：自动找/装 python+voxcpm、找/下模型、写配置（已就绪则秒过）
-npm run synthesize-audio              # 默认 voxcpm；用克隆声音念全部 step
-```
-
-setup 会写好 `scripts/voxcpm/voxcpm.env`（python / 模型 / 声音路径），之后就零配置。
-只有模型在别处 / 想换音色或解释器时才手动改该文件：`VOXCPM_MODEL_PATH` /
-`VOXCPM_VOICE` / `VOXCPM_PYTHON`。换音色见 `references/voices/README.md`。
-
-可选 env：`VOXCPM_PYTHON`（装了 voxcpm 的解释器，conda/venv 全路径）、
-`VOXCPM_DEVICE`（默认 `auto`，Mac 走 mps）、`VOXCPM_PORT`（`8765`）、
-`VOXCPM_CFG`/`VOXCPM_STEPS`（`2.0`/`10`）。完整说明见
-`scripts/tts-providers/README.md` 的 VoxCPM 段。
-
-`--voice=<wav>` 可临时换参考音频（覆盖 `VOXCPM_VOICE`）。想用自己的
-声音克隆见 `references/voices/README.md`。
-
-#### 2.C 换 provider / 加自定义 provider
+#### 2.D 换 provider / 加自定义 provider
 
 内置之外的常见后端在 `scripts/tts-providers/README.md` 里有 5 段
 **可粘贴**代码片段（ElevenLabs / edge-tts / macOS `say` / Azure / Google
@@ -176,24 +184,26 @@ npm run synthesize-audio -- --provider=edge-tts
 抄 `openai.sh`（HTTP-based）或 `minimax.sh`（CLI-based）起手最快。
 详细规范在 `scripts/tts-providers/README.md`。
 
-#### 2.D 退化路径
+#### 2.E 退化路径
 
-如果两个内置 provider 都没就绪（没装 mmx 也没有 OpenAI key）告诉用户：
+如果三个内置 provider 都没就绪（voxcpm 没 setup、没装 mmx、也没有 OpenAI key）
+告诉用户：
 
 ```
 我可以：
 
-  1. 用内置 openai provider（如果你已有 OpenAI key）
+  1. 用默认 voxcpm 克隆某个人的声音（本地 / 离线，不要 key）
+     先跑 bash scripts/voxcpm/voxcpm-setup.sh（自动装 voxcpm + 下 4.6G 模型），
+     再 npm run synthesize-audio。详见上面的 2.A
+
+  2. 用内置 openai provider（如果你已有 OpenAI key）
      export OPENAI_API_KEY=sk-...
      PRESENTATION_TTS=openai npm run synthesize-audio
 
-  2. 帮你装 MiniMax CLI（默认 provider，中文音色更稳）
+  3. 帮你装 MiniMax CLI（中文音色更稳，要 MiniMax key）
      npm install -g mmx-cli && mmx auth login --api-key sk-xxxxx
      API key 在 https://platform.minimaxi.com 获取
-
-  3. 用内置 voxcpm 克隆某个人的声音（本地 / 离线）
-     要先下 4.6G 模型 + `pip install voxcpm`，详见
-     上面的「用内置 voxcpm 克隆声音合成」
+     装好后显式启用：PRESENTATION_TTS=minimax npm run synthesize-audio
 
   4. 换其它 provider
      scripts/tts-providers/README.md 里有 5 种现成代码片段：
@@ -291,8 +301,10 @@ voxcpm 专属：
 
 | 现象 | 原因 / 修法 |
 |---|---|
-| `voxcpm not importable by python3` | `pip install voxcpm soundfile`；或用装好的环境设 `VOXCPM_PYTHON=/path/to/python` |
-| `VOXCPM_MODEL_PATH not set` / `not a directory` | 指向本地 VoxCPM2 目录（4.6G，需先下载） |
+| `✗ voxcpm not importable by <python>` | 先跑 `bash scripts/voxcpm/voxcpm-setup.sh`；或 `pip install voxcpm soundfile`，再用装好的环境设 `VOXCPM_PYTHON=/path/to/python` |
+| `✗ Couldn't auto-find the VoxCPM2 model.` | 三个自动探测位置（`./pretrained_models/VoxCPM2`、`~/.cache/huggingface/hub/VoxCPM2`、`~/pretrained_models/VoxCPM2`）都没命中。跑 setup 脚本下模型，或把 `VOXCPM_MODEL_PATH` 指到含 `model.safetensors` 的目录 |
+| `✗ VOXCPM_MODEL_PATH is not a directory: <path>` | 路径写错 / 模型被挪走；重设为本地 VoxCPM2 目录（4.6G） |
+| `⚠ VOXCPM_VOICE not set` | 警告不是错误：没参考音频也能跑（用 `VOXCPM_VOICE_DESIGN`）。要克隆音色就设 `VOXCPM_VOICE=<wav>` 或传 `--voice=<wav>` |
 | `VoxCPM server did not come up` | 看 `/tmp/voxcpm_server.log`；多为模型路径错或内存不足。MPS 上 dtype 自动降到 float32，长文本吃内存 |
 | `voxcpm server request failed` | server 崩了；`lsof -ti:8765 \| xargs kill` 后重跑（会自动重启） |
 | 克隆音色不像 | 参考音频太短 / 有噪 / 多人；换更干净的 10–30s 单人片段，重设 `VOXCPM_VOICE` |

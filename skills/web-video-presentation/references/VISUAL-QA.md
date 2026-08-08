@@ -59,7 +59,16 @@ playwright**（保持零依赖、易集成）。覆盖以下检查：
 
 ### 2.3 输出格式
 
-控制台 + `layout-check.json`：
+**默认只打控制台，不落盘** —— `npm run layout:check` 零副作用，不需要往
+`.gitignore` 里加东西。要拿到完整 JSON 报告时**显式加 `--json`**：
+
+```bash
+npm run layout:check                       # 默认：只打控制台
+npm run layout:check -- --json             # 写到 <project>/layout-check.json
+npm run layout:check -- --json report.json # 写到你指定的路径（相对当前目录解析）
+```
+
+落盘时的 JSON 结构：
 
 ```json
 {
@@ -68,7 +77,7 @@ playwright**（保持零依赖、易集成）。覆盖以下检查：
     {
       "id": "01-coldopen",
       "checks": [
-        { "level": "fail", "rule": "composition-present", "detail": "no data-composition attribute found on root" },
+        { "level": "fail", "rule": "composition-present", "detail": "no data-composition attribute on scene root — see VISUAL-DIRECTION.md §1" },
         { "level": "warn", "rule": "composition-variety", "detail": "chapter uses only 1 unique composition across all steps" }
       ]
     }
@@ -100,9 +109,10 @@ playwright**（保持零依赖、易集成）。覆盖以下检查：
 │ ┃   └─────────────────────────────────────────────────────┘ ┃ │
 │ ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛ │
 │                                                              │
-│ step 03 · composition=asymmetric-60-40 · density=medium     │
-│ primary bbox: 1240×680 (51%) · secondary bbox: 360×680 (9%) │
-│ [L] toggle overlay · [→] next step · [G] grid only · [S] save│
+│ step 03 · composition=asymmetric-60-40                       │
+│ primary: 1240×680 (51%)                                      │
+│ secondary: 360×680 (9%)                                      │
+│ [L] overlay · [G] grid · [B] bg · [→] next                   │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -113,26 +123,39 @@ playwright**（保持零依赖、易集成）。覆盖以下检查：
   之外的内容不应进入**
 - **rule-of-thirds 线**（1/3、2/3 垂直 + 水平）—— 蓝色虚线，**主视
   觉中心应靠近交点**
-- **每个元素的 bbox 边框** —— 半透明绿框，**有重叠 = 警告**
-- **顶部信息条** —— `step N · composition=<name> · density=<low|medium|high>`
-  · primary bbox size + % · secondary bbox size + %
+- **每个元素的 bbox 边框** —— 半透明绿框，**有重叠 = 警告**（`data-role="primary"` /
+  `data-role="secondary"` 之间重叠会被标红）
+- **左上角读出条**（4 行）——
+  1. `step N · composition=<name>`（从 scene 根的 `data-composition` 读）
+  2. `primary: <w>×<h> (<pct>%)`
+  3. `secondary: <w>×<h> (<pct>%)`
+  4. 快捷键提示
+
+  > 读出条**不输出信息密度**（没有 `density=` 字段）—— 密度只由
+  > `npm run layout:check` 的文本节点数 warn 覆盖。
 
 ### 3.2 键盘快捷键
 
-- `L` —— toggle 整个 overlay
-- `G` —— 只保留 grid + safe-area（关掉所有 bbox）
-- `S` —— 保存当前 step 截图到 `layout-screenshots/<chapter>/<step>.png`
-  （用 `html2canvas`-free 的方式：直接 `canvas.toDataURL`）
-- `B` —— 切换背景 / 装饰元素显隐（看背景层是否抢戏）
-- `→` / `Space` —— 下一个 step（与正常推进一致）
+`LayoutDebug.tsx` 实现了三个键：
+
+- `L` —— toggle 整个 overlay（关掉 = 恢复正常动画播放）
+- `G` —— 只保留 grid + safe-area（关掉所有 bbox 描边）
+- `B` —— 切换 `data-role="background"` 元素显隐（看背景层是否抢戏）
+
+推进 step 用页面本来的方式（点击 / `→` / `Space`），overlay 不拦截。
+
+> **没有截图快捷键**。`S` 存图（`layout-screenshots/<chapter>/<step>.png`）
+> 曾在计划里，但**尚未实现** —— overlay 里没有任何 canvas / 导出代码。
+> 需要存图就用系统截图或浏览器 DevTools 的 "Capture node screenshot"。
 
 ### 3.3 怎么用 `?layout=1` 做 contact sheet
 
-每章录屏前：
+每章录屏前（**手工截图**，见上面的说明）：
 
 ```bash
 mkdir -p presentation/layout-screenshots/01-coldopen
-# 浏览器开 http://localhost:5174/?layout=1，按 → 走过每步，每步按 S 截图
+# 浏览器开 http://localhost:5174/?layout=1，按 → 走过每步，
+# 每步用系统截图 / DevTools "Capture node screenshot" 存到上面的目录，
 # 然后用任意拼图工具（macOS 预览 / ffmpeg montage / ImageMagick）拼成网格
 ```
 

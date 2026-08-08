@@ -46,6 +46,9 @@
 **开发计划**：
 
 - step 1 (~Ts) — <屏幕内容>
+    purpose: <一个动词 + 一个对象>
+    focal: <观众视线第一站：一件具体物>
+    content relationship: <递进 / 反差 / 收束 / 铺垫 / 揭示 / 持留 / 列举 / 总览>
 - ...
 
 口播节选：
@@ -113,7 +116,12 @@ pull-quote 引用 / 数据浮层。
 > 引用源。先做 `paper-digest.md`，再写 outline。详见
 > [`PAPER-INTERPRETATION.md`](PAPER-INTERPRETATION.md) §1（digest）+ §3（证据层）。
 
-### Step 列表：每步 **1 行**
+### Step 列表：每步 **1 行屏幕内容 + 3 行意图字段**
+
+主行仍然是**一行**（`step N (~Ts) — <屏幕内容>`，写不下就该拆 step）；
+主行之下缩进**三行意图字段**（`purpose` / `focal` / `content relationship`）。
+这三行**可选但强烈推荐** —— 它们不规划视觉，只声明"做什么 / 看哪里 /
+与前后什么关系"，是 chapter agent 选构图和动画蓝图的入手点。
 
 ```
 - step N (~Ts) — <屏幕内容>
@@ -200,7 +208,9 @@ pull-quote 引用 / 数据浮层。
 >
 > 拿到结论后**先按 fail 项改 outline，再进入 Checkpoint Plan**。
 
-- [ ] 每个 step 都是**单一句屏幕内容描述**，没有"动画"行 / "手段"行
+- [ ] 每个 step 的**主行**都是单一句屏幕内容描述；缩进行只允许
+      `purpose` / `focal` / `content relationship` 三个字段，没有"动画"行 /
+      "手段"行 / "构图"行
 - [ ] 没有任何 step 写了具体毫秒 / 秒数（除 `(~Ts)` 口播估时）
 - [ ] 每章首段都有「信息池」block，至少 3 条 article 抽取项，**每条
       必带来源标注**（`—— 来源 article §X / Lxx`）—— 没标注 chapter agent

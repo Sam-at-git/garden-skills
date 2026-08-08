@@ -26,6 +26,92 @@ const VALID_AGENTS = new Set([
 // Example: web-design-engineer-v1.2.0
 const TAG_RE = /^([a-z0-9][a-z0-9-]*[a-z0-9])-v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/;
 
+/**
+ * Parse SKILL.md frontmatter strictly enough to reject anything a real YAML
+ * parser would reject. We can't `import yaml` — this repo ships zero runtime
+ * dependencies on purpose (see the header comment) — so this walks the block
+ * by hand and enforces the subset frontmatter is allowed to use.
+ *
+ * The case that motivated it: a `description:` whose continuation lines were
+ * left at column 0. YAML reads those as new mapping keys and throws, but a
+ * per-line `/^description:\s*(.+)$/m` regex happily matches the first line and
+ * reports the file as valid — so CI passed while the skill failed to load.
+ *
+ * Returns { values, errors }. `values` holds the scalars we know how to read;
+ * anything structural (nested maps, block scalars) is reported as an error
+ * rather than guessed at, since frontmatter here is always flat key: value.
+ */
+export function parseFrontmatter(block) {
+  const errors = [];
+  const values = {};
+  const lines = block.split("\n");
+  let lastKey = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineNo = i + 1;
+    if (line.trim() === "" || line.trimStart().startsWith("#")) continue;
+
+    // Indented line = continuation of the previous key's scalar. Legal YAML,
+    // and the only multi-line form we accept.
+    if (/^\s/.test(line)) {
+      if (!lastKey) {
+        errors.push(`frontmatter line ${lineNo}: indented line with no key above it`);
+        continue;
+      }
+      values[lastKey] = `${values[lastKey]} ${line.trim()}`.trim();
+      continue;
+    }
+
+    const m = /^([A-Za-z_][A-Za-z0-9_.-]*):(?:\s+(.*))?$/.exec(line);
+    if (!m) {
+      // This is the bug class above: a column-0 line that is not `key: value`.
+      errors.push(
+        `frontmatter line ${lineNo}: not a "key: value" pair — ${JSON.stringify(
+          line.slice(0, 60),
+        )}. A value that spans lines must be indented (or kept on one line); ` +
+          `left at column 0, YAML reads it as a new key and fails to parse.`,
+      );
+      lastKey = null;
+      continue;
+    }
+
+    const [, key, rawValue = ""] = m;
+    if (key in values) errors.push(`frontmatter: duplicate key "${key}" on line ${lineNo}`);
+
+    const value = rawValue.trim();
+    if (value === "|" || value === ">" || value.startsWith("|") || value.startsWith(">")) {
+      errors.push(
+        `frontmatter line ${lineNo}: block scalars (${value}) are not supported here — ` +
+          `keep "${key}" on one line`,
+      );
+      lastKey = null;
+      continue;
+    }
+    if (value === "") {
+      errors.push(`frontmatter line ${lineNo}: key "${key}" has no value (nested maps are not supported)`);
+      lastKey = null;
+      continue;
+    }
+
+    values[key] = value;
+    lastKey = key;
+  }
+
+  // A plain (unquoted) scalar can't contain ": " — YAML would split it into
+  // another key. Quoted scalars are fine.
+  for (const [key, value] of Object.entries(values)) {
+    const quoted =
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"));
+    if (!quoted && /:\s/.test(value)) {
+      errors.push(`frontmatter: "${key}" contains ": " and must be quoted`);
+    }
+  }
+
+  return { values, errors };
+}
+
 export function parseTag(tag) {
   const m = TAG_RE.exec(tag);
   if (!m) return null;
@@ -129,27 +215,18 @@ export async function validateSkillStructure(skillDir, name) {
     if (!m) {
       errors.push(`${name}: SKILL.md is missing YAML frontmatter (--- ... ---)`);
     } else {
-      const nameLine = /^name:\s*(\S+)\s*$/m.exec(m[1]);
-      if (!nameLine) {
+      const { values, errors: fmErrors } = parseFrontmatter(m[1]);
+      for (const e of fmErrors) errors.push(`${name}: SKILL.md ${e}`);
+
+      if (!values.name) {
         errors.push(`${name}: SKILL.md frontmatter has no "name:" field`);
-      } else if (nameLine[1] !== name) {
+      } else if (values.name !== name) {
         errors.push(
-          `${name}: SKILL.md frontmatter name "${nameLine[1]}" does not match folder "${name}"`,
+          `${name}: SKILL.md frontmatter name "${values.name}" does not match folder "${name}"`,
         );
       }
-      const descriptionLine = /^description:\s*(.+?)\s*$/m.exec(m[1]);
-      if (!descriptionLine) {
+      if (!values.description) {
         errors.push(`${name}: SKILL.md frontmatter has no "description:" field`);
-      } else {
-        const description = descriptionLine[1].trim();
-        const isQuoted =
-          (description.startsWith('"') && description.endsWith('"')) ||
-          (description.startsWith("'") && description.endsWith("'"));
-        if (!isQuoted && /:\s/.test(description)) {
-          errors.push(
-            `${name}: SKILL.md frontmatter description contains ": " and must be quoted`,
-          );
-        }
       }
     }
   }

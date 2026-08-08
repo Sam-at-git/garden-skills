@@ -121,6 +121,14 @@ cp <path-to-web-video-presentation>/themes/newsroom/tokens.css \
 `base.css` 给**性格 token 都准备了合理的默认值**。主题的 `tokens.css`
 只需要覆盖**调色板 + 字体 + 性格旋钮 + 装饰**这四类。
 
+> ⚠️ **`tokens.css` 在 `App.tsx` 里必须最后 import**（在 `base.css` /
+> `composition.css` 之后）。默认值和主题值都写在 `:root` 上，选择器和
+> 优先级完全相同，**谁在打包顺序里靠后谁赢**。之前 `tokens.css` 排在
+> 第二位，导致所有主题的 `--stage-pad-*` / `--dur-*` / `--ease-*` /
+> `--hero-num-*` / `--r-card` / `--rule-w` / `--rule-style` /
+> `--shadow-stage` 全部被 `base.css` 的默认值盖回去 —— 主题里写的节奏和
+> 留白从来没生效过。改 `App.tsx` 的 import 顺序时留意这一条。
+
 > **base.css 里的字号 / 间距 / 时长尺度只供 primitive class 自己用**
 > （`.label-mono` / `.kicker` / `.scene-pad` 等）。**不是**章节必须消费
 > 的契约——章节这一层要不要 `var(--t-h1)` 还是直接写 `font-size: 96px`
