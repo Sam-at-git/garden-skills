@@ -68,6 +68,7 @@
   --ev-fact:        var(--text);
   --ev-supported:   var(--accent);
   --ev-infer:       var(--text-faint);
+  --ev-background:  var(--text-mute);   /* 旁白：比 infer 稍实，但无边框 */
 
   /* SIGNATURE: a single faint sidenote-column hairline at ~71% — suggests
      a margin-notes column without drawing a hard line. Noticed once, then

@@ -19,7 +19,7 @@ It is designed for:
 - Building product demos, tutorials, keynote-style explainers, and visual talks
 - Creating “dynamic PPT, but not PPT” experiences with strong motion and pacing
 - Optionally synthesizing narration audio after the visual outline is approved
-- **Interpreting research papers (arXiv / conferences / journals)** — opt-in *paper mode* adds an evidence layer (paper fact vs experiment-supported vs narrator-inference, with citation locators), paper-typed narrative arcs, figure/table reuse discipline, and KaTeX formula reveals (`--math`); an optional *silent mode* runs the whole paper pipeline end-to-end on defaults without confirmation pauses
+- **Interpreting research papers (arXiv / conferences / journals)** — opt-in *paper mode* adds a **concept-explanation layer** (the narrative skeleton follows the paper, but every concept is re-taught from scratch with outside intuition), a four-way evidence layer (paper fact / experiment-supported / narrator-inference / background knowledge, with citation locators), paper-typed narrative arcs, figure/table reuse discipline, and KaTeX formula reveals (`--math`); an optional *silent mode* runs the whole paper pipeline end-to-end on defaults without confirmation pauses
 
 The skill is primarily a **methodology and collaboration workflow**. The scaffold supplies reusable tokens, stage primitives, themes, and examples, but each project should still choose a visual language that fits the topic.
 
@@ -36,7 +36,7 @@ The skill is primarily a **methodology and collaboration workflow**. The scaffol
 - **Theme tokens** — visual decisions flow through semantic tokens so themes can change the whole feel.
 - **Pluggable TTS** — provider-agnostic audio runner ships **three built-in providers** (local VoxCPM voice cloning — the default; MiniMax `mmx-cli`; OpenAI TTS via curl); swap to ElevenLabs / edge-tts / Azure / Google Cloud / macOS `say` / any self-hosted TTS by dropping a single shell file into `tts-providers/`.
 - **Hard checkpoints** — the agent pauses after script/theme alignment, after outline approval, and before optional audio synthesis.
-- **Paper mode (opt-in)** — when the input is a research paper, an evidence layer labels every on-screen claim as *paper-fact / experiment-supported / narrator-inference* with citation locators (`§X` / `Fig Y` / `Table Z`), plus paper-typed narrative arcs, figure/table reuse discipline, and KaTeX formula reveals via `scaffold --math`. See `references/PAPER-INTERPRETATION.md` and the four `paper-*` examples.
+- **Paper mode (opt-in)** — when the input is a research paper, a **concept-explanation layer** keeps the narrative skeleton faithful to the paper while requiring the narrator to re-teach every concept with outside intuition (anchor → bridge → term → worked example, backed by a prerequisite ledger and an *assertion test* that fails any mechanism claim the script never justifies). An evidence layer then labels every on-screen claim as *paper-fact / experiment-supported / narrator-inference / background-knowledge*, the first two carrying citation locators (`§X` / `Fig Y` / `Table Z`). Plus paper-typed narrative arcs, figure/table reuse discipline, and KaTeX formula reveals via `scaffold --math`. See `references/PAPER-INTERPRETATION.md` and the four `paper-*` examples.
 
 ---
 

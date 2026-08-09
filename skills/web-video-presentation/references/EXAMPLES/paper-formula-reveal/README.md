@@ -54,7 +54,7 @@
 locator。step 1–4 挂。
 
 badge / locator / citation 走**共享**的 `<Evidence>` class：
-`ev-badge`（配 `data-evidence="fact|supported|infer"`）、`ev-locator`、`ev-citation`，
+`ev-badge`（配 `data-evidence="fact|supported|infer|background"`）、`ev-locator`、`ev-citation`，
 样式在 `src/styles/evidence.css`，`chapter.css` 里**不再**重复一份。
 
 ## 文件结构

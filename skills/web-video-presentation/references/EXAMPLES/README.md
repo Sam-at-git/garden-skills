@@ -48,7 +48,7 @@ Part 0 原则 7 节制使用）、真素材（不是占位卡）、字号狠对�
 
 论文解读视频（arXiv / 顶会）的章节结构。完整方法见
 [`../PAPER-INTERPRETATION.md`](../PAPER-INTERPRETATION.md)；这几个 anchor 演示
-论文专属的布局 + **证据层**（论文事实 / 实验支持 / 解读推断 三类标注）。
+论文专属的布局 + **证据层**（论文事实 / 实验支持 / 解读推断 / 背景知识 四类标注）。
 
 | 例子 | 论文场景 | 布局（PI §5） | 文件 |
 |---|---|---|---|
@@ -57,7 +57,7 @@ Part 0 原则 7 节制使用）、真素材（不是占位卡）、字号狠对�
 | [`paper-formula-reveal/`](paper-formula-reveal/) | 公式 4 步揭示（**需 `--math`**） | left-fig-right-explain | README + tsx + css + narrations |
 | [`paper-experiment-chart/`](paper-experiment-chart/) | 基线对比：同轴 + 方差 + 公平性 | chart-dominant | README + tsx + css + narrations |
 
-> 每个 paper anchor 都演示**证据层 badge**（论文事实 / 实验支持 / 解读推断）
+> 每个 paper anchor 都演示**证据层 badge**（论文事实 / 实验支持 / 解读推断 / 背景知识）
 > + locator（§X / Fig Y / Table Z）。`paper-experiment-chart` 还演示一步挂
 > **两个** badge —— 数据是 `实验支持`，讲者的公平性评价是 `解读推断`
 > （虚线、视觉明显更弱），这正是证据层的核心示范。

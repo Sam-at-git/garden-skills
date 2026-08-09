@@ -64,7 +64,7 @@ const barHeight = (v: number) => `${(v / AXIS_MAX) * 100}%`;  // 71.4 → 71.4%
   这正是证据层的核心示范：观众一眼分得清"数据说的"和"讲者说的"。
 
 badge / locator / citation 走**共享**的 `<Evidence>` class：
-`ev-badge`（配 `data-evidence="fact|supported|infer"`）、`ev-locator`、`ev-citation`，
+`ev-badge`（配 `data-evidence="fact|supported|infer|background"`）、`ev-locator`、`ev-citation`，
 样式在 `src/styles/evidence.css`。`chapter.css` 里只留本章特有的那一行——同屏第二个
 badge 的错位坐标 `.pe-ev-2`。
 

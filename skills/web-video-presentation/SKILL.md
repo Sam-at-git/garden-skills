@@ -1,6 +1,6 @@
 ---
 name: web-video-presentation
-description: 把一篇文章或口播稿，做成"看起来像视频"的点击驱动 16:9 网页演示，可选合成口播音频。流程：原始文章 → **一次产出**口播稿 + outline 开发计划 → 用户**一次对齐** 5 件事（稿子 / outline / 主题 / 素材 / 开发模式）→ 网页开发（逐章 / 顺序 / 并行）→ 可选音频合成（provider-agnostic：内置 MiniMax mmx-cli + OpenAI TTS + VoxCPM 声音克隆，可换 ElevenLabs / edge-tts / Azure / 自带 TTS）。**outline 只规划节奏与信息密度，不规划动画** —— 动画由章节开发时按 PRINCIPLES + ANTI-AI 法则即时设计。每次点击推进口播稿的一个节拍，每一步独占整屏，进度条平时隐藏只在悬浮时出现。适用场景：用网页做视频（动态 PPT 但不像 PPT）、把口播稿 / 文章变成可交互的解说、为 B 站 / YouTube / 视频号录屏教程、做有电影感的产品 / talk demo。本 Skill 沉淀的是设计方法论 + 协作流程 —— 不绑定任何特定样式 / 字体 / 颜色 —— 因此能复用到任意主题与美学。**论文解读视频（arXiv / 顶会）额外读 references/PAPER-INTERPRETATION.md** —— 证据层标注（论文事实 / 实验支持 / 解读推断）+ 论文类型叙事弧 + 图表复用纪律 + opt-in KaTeX 公式揭示（--math）。
+description: 把一篇文章或口播稿，做成"看起来像视频"的点击驱动 16:9 网页演示，可选合成口播音频。流程：原始文章 → **一次产出**口播稿 + outline 开发计划 → 用户**一次对齐** 5 件事（稿子 / outline / 主题 / 素材 / 开发模式）→ 网页开发（逐章 / 顺序 / 并行）→ 可选音频合成（provider-agnostic：内置 MiniMax mmx-cli + OpenAI TTS + VoxCPM 声音克隆，可换 ElevenLabs / edge-tts / Azure / 自带 TTS）。**outline 只规划节奏与信息密度，不规划动画** —— 动画由章节开发时按 PRINCIPLES + ANTI-AI 法则即时设计。每次点击推进口播稿的一个节拍，每一步独占整屏，进度条平时隐藏只在悬浮时出现。适用场景：用网页做视频（动态 PPT 但不像 PPT）、把口播稿 / 文章变成可交互的解说、为 B 站 / YouTube / 视频号录屏教程、做有电影感的产品 / talk demo。本 Skill 沉淀的是设计方法论 + 协作流程 —— 不绑定任何特定样式 / 字体 / 颜色 —— 因此能复用到任意主题与美学。**论文解读视频（arXiv / 顶会）额外读 references/PAPER-INTERPRETATION.md** —— **概念解释层**（骨架照抄论文、每个概念由讲者引外部通识用「锚→桥→术语→验算」四拍讲透）+ 证据层标注（论文事实 / 实验支持 / 解读推断 / 背景知识）+ 论文类型叙事弧 + 图表复用纪律 + opt-in KaTeX 公式揭示（--math）。
 ---
 
 # Web Video Presentation
@@ -17,7 +17,8 @@ description: 把一篇文章或口播稿，做成"看起来像视频"的点击�
 - B 站 / YouTube /抖音视频内容
 - **论文解读（arXiv / 顶会 / 期刊）** —— 走 paper 模式，额外读
   [`references/PAPER-INTERPRETATION.md`](references/PAPER-INTERPRETATION.md)：
-  证据层（论文事实 / 实验支持 / 解读推断）+ 论文类型叙事弧 + 图表复用 + 公式（`--math`）；
+  **概念解释层（§2.5，先读这节）** + 证据层（论文事实 / 实验支持 / 解读推断 / 背景知识）
+  + 论文类型叙事弧 + 图表复用 + 公式（`--math`）；
   可选**静默模式**（全程默认、不停下来问，仅论文，见该文件 §12）
 
 本 Skill **以方法论 + 协作流程为核心**。脚手架模板提供 token 和原语，
@@ -247,6 +248,9 @@ Phase 2.4 的"实现单章"会重复 N 次 —— 每次都要回看核心约束
 ```
   6. 论文模式对齐：
      - paper type 确认？（empirical / methods / survey / theory / system）→ 决定走哪支叙事弧
+     - **前置知识台账**列全了吗？每个术语都判了 必讲 / 一句带过 / 明确跳过？（§1.2 第 5 节）
+     - 「必讲」的概念在 outline 里都有对应的 `explains:` step 吗？（§2.5）
+     - 时长是按**概念预算**算的，不是按字数比例砍的吗？（§2.5.5 —— methods 论文 20~35 分钟是常态）
      - paper-digest.md 的 locator 够不够撑证据层？（每个关键画面能否挂 §X / Fig Y）
      - claim vs proven 边界标清了吗？（一句话主张 / 论文已证 / 我的推断）
      - 哪些图表 redraw / 哪些 animate / 哪些只 cite？（faithfulness：不扭曲数据 / 坐标）
@@ -481,8 +485,13 @@ Part 0 —— **写章节时回那里查**，下面只是索引。
 | 9 | 整片同一主题 | 章节间不翻表面色；**颜色 / 字体走 token**，其它尺度章节自由 |
 | 10 | 双源原则 | script 定节拍，**article 定画面密度**（落到信息池） |
 
-> 📄 **论文输入**：在十条原则之上再叠一层认识论纪律 —— 证据层（论文事实 /
-> 实验支持 / 解读推断 分开标）。先读 [`references/PAPER-INTERPRETATION.md`](references/PAPER-INTERPRETATION.md)。
+> 📄 **论文输入**：在十条原则之上再叠两层 ——
+> **① 概念解释层**（[`PAPER-INTERPRETATION.md`](references/PAPER-INTERPRETATION.md) §2.5）：
+> 叙事骨架照抄论文，但每个概念 / 原理 / 推理都要由讲者引入外部通识、
+> 按「锚 → 桥 → 术语 → 验算」四拍重新讲透。**把解释压成断言是论文视频
+> 最高频的翻车。**
+> **② 认识论纪律**（§3 证据层）：论文事实 / 实验支持 / 解读推断 / 背景知识
+> 分开标。先读 [`references/PAPER-INTERPRETATION.md`](references/PAPER-INTERPRETATION.md)。
 
 ---
 
@@ -506,7 +515,7 @@ Part 8「常见反馈速查」。**关键**：先定位是哪一层（节奏 / �
 | [`references/VISUAL-DIRECTION.md`](references/VISUAL-DIRECTION.md) | **Phase 2.4 ★ 静态布局阶段** | 8 个构图（centered-hero / asymmetric-60-40 / split-screen / rule-of-thirds / full-width-strip / layered-depth / triptych / diagram-canvas）+ 视觉角色 / 英雄帧契约 / 密度 tokens / 反 AI 味完整清单 |
 | [`references/MOTION-BLUEPRINTS.md`](references/MOTION-BLUEPRINTS.md) | **Phase 2.4 选动画节拍** | 论文 / 教学常用 10 种蓝图（process-build / compare-reveal / ablation-remove / formula-assemble / data-countup / focus-drilldown / failure-inspect / token-transform / evidence-stack / boundary-contract） |
 | [`references/VISUAL-QA.md`](references/VISUAL-QA.md) | **Phase 2.4 完工自检** | 三层检查：`npm run layout:check` 机器检查 + `?layout=1` debug overlay 人工检查 + 修复 catalog |
-| [`references/PAPER-INTERPRETATION.md`](references/PAPER-INTERPRETATION.md) | **论文输入时必读**（叠加在 SKILL + CHAPTER-CRAFT 之上） | paper-digest / 论文类型叙事弧 / 证据层（事实·证据·推断）/ 内容→动画→布局 map / 公式（KaTeX `--math`）/ 图表复用 / 论文级验收 |
+| [`references/PAPER-INTERPRETATION.md`](references/PAPER-INTERPRETATION.md) | **论文输入时必读**（叠加在 SKILL + CHAPTER-CRAFT 之上） | paper-digest（含**前置知识台账**）/ 论文类型叙事弧 / **§2.5 概念解释层（骨架照抄论文·血肉自己长，四拍 + 断言测试）** / 证据层（事实·证据·推断·背景）/ 内容→动画→布局 map / 公式（KaTeX `--math`）/ 图表复用 / 论文级验收 |
 | [`references/EXAMPLES/`](references/EXAMPLES/) | **可选** —— 看结构 | 章节结构示意（hook / list-reveal / case-tech-review / **paper-*** 4 个论文 anchor）；**不是抄袭模板** |
 | [`references/THEMES.md`](references/THEMES.md) | 选 / 造 / 切主题时 | 完整 token 契约 + 内置主题清单 + 创作流程 |
 | [`references/AUDIO.md`](references/AUDIO.md) | Phase 3 才读 | provider-agnostic 音频合成流程、内置 minimax / voxcpm 用法、换 provider 路径、故障排查 |

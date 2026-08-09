@@ -1,14 +1,22 @@
 // Evidence.tsx — the paper-mode evidence layer.
 //
-// Every on-screen claim in a paper-interpretation video is one of three
+// Every on-screen claim in a paper-interpretation video is one of four
 // things, and the viewer is entitled to know which:
 //
-//   fact       the paper states it            → cite §X
-//   supported  an experiment in it shows it   → cite Fig Y / Table Z
-//   infer      the narrator concluded it      → no locator, visually weaker
+//   fact        the paper states it            → cite §X
+//   supported   an experiment in it shows it   → cite Fig Y / Table Z
+//   infer       the narrator concluded it      → no locator, visually weaker
+//   background  textbook knowledge or the narrator's own analogy, brought in
+//               to make a concept land (PAPER-INTERPRETATION.md §2.5). Not in
+//               the paper — but not a claim about it either → no locator.
 //
-// Keeping "the paper proved this" visually distinct from "I think this"
-// is the whole point — see references/PAPER-INTERPRETATION.md §3.
+// infer vs background: would a different narrator say something different?
+// Yes → infer (a judgement). No → background (common knowledge). When torn,
+// pick infer; overstating your own voice is safer than understating it.
+//
+// Keeping "the paper proved this" visually distinct from "I think this" and
+// from "here is the background you need" is the whole point — see
+// references/PAPER-INTERPRETATION.md §3.
 //
 // Usage: one `evidence.ts` per chapter, next to the chapter component.
 //
@@ -32,13 +40,16 @@
 // Styling is in styles/evidence.css: token-only, no new hues. A theme can
 // retune the three by overriding --ev-fact / --ev-supported / --ev-infer.
 
-export type ClaimType = "fact" | "supported" | "infer";
+export type ClaimType = "fact" | "supported" | "infer" | "background";
 
 export interface EvidenceMark {
   /** 0-indexed, matching the chapter's own step numbering. */
   step: number;
   type: ClaimType;
-  /** "§3.2" | "Fig 4" | "Table 2" | "Eq 7". Only `infer` may be null. */
+  /** "§3.2" | "Fig 4" | "Table 2" | "Eq 7".
+   *  Required for `fact` / `supported`; MUST be null for `infer` /
+   *  `background` — neither is in the paper, so neither may point at one of
+   *  its section numbers. */
   locator: string | null;
   /** Short note on the claim this step puts on screen. Not rendered. */
   note?: string;
@@ -54,6 +65,7 @@ const LABEL: Record<ClaimType, string> = {
   fact: "论文事实",
   supported: "实验支持",
   infer: "解读推断",
+  background: "背景知识",
 };
 
 /** Badge + locator for whichever mark belongs to the current step. */

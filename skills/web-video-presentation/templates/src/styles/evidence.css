@@ -3,12 +3,13 @@
  * and references/PAPER-INTERPRETATION.md §3).
  *
  * Token-only and hue-free: it introduces no color of its own, it borrows
- * --text / --accent / --text-mute. Every value has an inline fallback, so
- * it renders correctly on all 24 built-in themes with no theme changes.
- * A theme that wants to retune the three claim types overrides
- * --ev-fact / --ev-supported / --ev-infer in its tokens.css.
+ * --text / --accent / --text-mute / --text-faint. Every value has an inline
+ * fallback, so it renders correctly on all 24 built-in themes with no theme
+ * changes. A theme that wants to retune the four claim types overrides
+ * --ev-fact / --ev-supported / --ev-infer / --ev-background in its tokens.css.
  *
- * The type is carried by `data-evidence="fact|supported|infer"` — the same
+ * The type is carried by
+ * `data-evidence="fact|supported|infer|background"` — the same
  * attribute-driven convention as data-composition / data-role.
  *
  * Placement uses --safe-side / --safe-top, which track the stage padding
@@ -48,6 +49,23 @@
   color: var(--ev-infer, var(--text-mute));
   border-style: dashed;
   opacity: 0.85;
+}
+
+/* Background knowledge the narrator brought in to make a concept land
+   (PAPER-INTERPRETATION.md §2.5). It is not a claim about the paper, so it
+   is set apart by SHAPE, not by fading: no border at all, plus a leading dot
+   that reads as an aside. It stays readable — it is there to help, not to be
+   hedged. Border-less vs solid vs dashed keeps the four types separable in
+   grayscale, without spending a second hue. */
+.ev-badge[data-evidence="background"] {
+  color: var(--ev-background, var(--text-mute));
+  border-color: transparent;
+  background: transparent;
+  opacity: 0.9;
+}
+.ev-badge[data-evidence="background"]::before {
+  content: "· ";
+  opacity: 0.7;
 }
 
 .ev-locator {
