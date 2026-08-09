@@ -26,6 +26,9 @@ dist/release/
 
 # Skill runtime artifacts
 garden-gpt-image-2/
+# 用 web-video-presentation 产出的视频工程（口播稿 / 章节代码 / 音频 / 成片）。
+# 目前它放在仓库外的同级目录，这条是防御性的：万一哪天挪进来，不会被误提交。
+transformer-video/
 
 .agents/
 
