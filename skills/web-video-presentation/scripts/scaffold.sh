@@ -136,6 +136,7 @@ cp "$THEME_TOKENS"                          src/styles/tokens.css
 cp "$TEMPLATES/src/styles/base.css"         src/styles/base.css
 cp "$TEMPLATES/src/styles/composition.css"  src/styles/composition.css
 cp "$TEMPLATES/src/styles/evidence.css"     src/styles/evidence.css
+cp "$TEMPLATES/src/styles/paper-figure.css" src/styles/paper-figure.css
 cp "$TEMPLATES/src/styles/animations.css"   src/styles/animations.css
 cp "$TEMPLATES/src/styles/fonts.css"        src/styles/fonts.css
 
@@ -148,6 +149,7 @@ cp "$TEMPLATES/src/components/Stage.tsx"          src/components/Stage.tsx
 cp "$TEMPLATES/src/components/MaskReveal.tsx"     src/components/MaskReveal.tsx
 cp "$TEMPLATES/src/components/LayoutDebug.tsx"    src/components/LayoutDebug.tsx
 cp "$TEMPLATES/src/components/Evidence.tsx"       src/components/Evidence.tsx
+cp "$TEMPLATES/src/components/PaperFigure.tsx"    src/components/PaperFigure.tsx
 cp "$TEMPLATES/src/components/ProgressBar.tsx"    src/components/ProgressBar.tsx
 cp "$TEMPLATES/src/components/ProgressBar.css"    src/components/ProgressBar.css
 cp "$TEMPLATES/src/components/AutoStartGate.tsx"  src/components/AutoStartGate.tsx

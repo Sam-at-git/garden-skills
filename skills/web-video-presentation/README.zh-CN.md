@@ -36,7 +36,7 @@
 - **主题 token**：视觉属性通过语义 token 驱动，换主题不只是换颜色。
 - **可插拔 TTS**：provider-agnostic 音频 runner，**内置 3 个 provider**（本地 VoxCPM 声音克隆 —— 默认 + MiniMax `mmx-cli` + OpenAI TTS）；往 `tts-providers/` 丢一个 `.sh` 就能换成 ElevenLabs / edge-tts / Azure / Google Cloud / macOS `say` / 任何自部署 TTS。
 - **硬 checkpoint**：稿子/主题、outline、音频合成前都必须停下来与用户确认。
-- **论文模式（opt-in）**：输入是论文时，**概念解释层**要求叙事骨架尊重原文、而每个概念由讲者引入外部通识重新讲透（锚→桥→术语→验算四拍 + 前置知识台账 + 断言测试）；证据层把每个屏幕论点标成 *论文事实 / 实验支持 / 解读推断 / 背景知识*，前两类挂定位符（`§X` / `Fig Y` / `Table Z`）；另有论文类型叙事弧、图表复用纪律、KaTeX 公式揭示（`scaffold --math`）。详见 `references/PAPER-INTERPRETATION.md` 与 4 个 `paper-*` 示例。
+- **论文模式（opt-in）**：输入是论文时，**概念解释层**要求叙事骨架尊重原文、而每个概念由讲者引入外部通识重新讲透（锚→桥→术语→验算四拍 + 前置知识台账 + 断言测试）；证据层把每个屏幕论点标成 *论文事实 / 实验支持 / 解读推断 / 背景知识*，前两类挂定位符（`§X` / `Fig Y` / `Table Z`）；**原图纪律**要求先用 `scripts/fetch-paper-figures.mjs` 抓下论文自己的图（arXiv HTML 一条命令），招牌图与全部定性材料（注意力热图 / 样例 / 失败案例）直接用原图并署名，口播也要点到；另有论文类型叙事弧、图表复用纪律、KaTeX 公式揭示（`scaffold --math`）。详见 `references/PAPER-INTERPRETATION.md` 与 4 个 `paper-*` 示例。
 
 ---
 

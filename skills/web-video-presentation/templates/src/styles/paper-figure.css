@@ -1,0 +1,64 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * paper-figure.css — showing the paper's own figures on stage.
+ * Pairs with components/PaperFigure.tsx · see PAPER-INTERPRETATION.md §6.
+ *
+ * Token-only and hue-free, like evidence.css: no color of its own, every
+ * value has an inline fallback, so all built-in themes work untouched.
+ *
+ * Provenance is carried by `data-figure-source="original|redraw|animated"`
+ * — the same attribute-driven convention as data-composition / data-role /
+ * data-evidence.
+ * ───────────────────────────────────────────────────────────────────── */
+
+.pf-figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  min-width: 0;
+}
+
+/* The frame crops; the image inside may be scaled past it by `focus`. */
+.pf-frame {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  background: var(--surface-2, transparent);
+  /* A hairline keeps a white-background paper figure from bleeding into a
+     white stage — without dressing it up as a card. */
+  border: var(--bw-1, 1px) solid var(--rule);
+}
+
+.pf-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform-origin: 0 0;
+}
+/* When zoomed to a region, contain would fight the transform. */
+.pf-figure [style*="scale"].pf-img { object-fit: fill; height: auto; }
+
+/* ─── provenance line ─── */
+.pf-credit {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3, 12px);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--data-min, 16px);
+  letter-spacing: 0.1em;
+  color: var(--text-mute);
+}
+.pf-credit-by { color: var(--text-faint); }
+
+/* The paper's own pixels — stated plainly, no hedging. */
+.pf-credit[data-figure-source="original"] .pf-credit-label {
+  color: var(--text-2, var(--text));
+}
+
+/* We rebuilt it. Say so, so nobody mistakes our axes for the paper's. */
+.pf-credit[data-figure-source="redraw"] .pf-credit-label,
+.pf-credit[data-figure-source="animated"] .pf-credit-label {
+  color: var(--text-mute);
+  font-style: italic;
+}

@@ -59,6 +59,7 @@ Phase 4   录屏 + 后期
 my-video/
 ├── article.md          # 用户给原文时必有 —— 不删！开发阶段画面信息源
 ├── paper-digest.md     # ★ 仅论文输入：结构化摘要（带 locator），证据层引用源
+├── paper-figures/      # ★ 仅论文输入：抓下来的论文原图 + figures.json（PAPER-INTERPRETATION §6.5）
 ├── script.md           # 必有：保持原文语言的平台化口播稿（决定节拍）
 ├── outline.md          # 必有：开发计划（章节切分 + 每步内容 + 信息池）
 └── presentation/       # 脚手架产出的 Vite + React + TS 项目
@@ -66,6 +67,7 @@ my-video/
     │   ├── <Chapter>.tsx     # 视觉实现
     │   ├── <Chapter>.css
     │   └── narrations.ts     # ★ step 数 + 口播文本的唯一真相源
+    ├── public/paper/         # ★ 仅论文输入：选中上屏的论文原图
     ├── scripts/
     │   ├── extract-narrations.ts   # 扫所有 narrations.ts → audio-segments.json
     │   ├── synthesize-audio.sh     # provider-agnostic runner（循环 segments）
@@ -253,7 +255,10 @@ Phase 2.4 的"实现单章"会重复 N 次 —— 每次都要回看核心约束
      - 时长是按**概念预算**算的，不是按字数比例砍的吗？（§2.5.5 —— methods 论文 20~35 分钟是常态）
      - paper-digest.md 的 locator 够不够撑证据层？（每个关键画面能否挂 §X / Fig Y）
      - claim vs proven 边界标清了吗？（一句话主张 / 论文已证 / 我的推断）
-     - 哪些图表 redraw / 哪些 animate / 哪些只 cite？（faithfulness：不扭曲数据 / 坐标）
+     - **论文原图抓了吗？**（`node <skill>/scripts/fetch-paper-figures.mjs <arxiv-id>`，§6.5）
+       —— 招牌图和**全部定性材料**（注意力图 / 样例 / 失败案例）应当直接用原图，别重画
+     - 哪些图表 cite 原图 / 哪些 redraw / 哪些 animate？（§6 决策树；不扭曲数据 / 坐标）
+     - license 查了吗？画面署名 + 口播点名（§6.2）都安排了吗？
      - 要不要 --math？（公式多的 methods / theory 论文建议要）
 ```
 

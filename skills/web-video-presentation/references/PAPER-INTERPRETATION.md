@@ -55,9 +55,11 @@
 my-paper-video/
 ├── article.md          # 论文原文（PDF→md / arXiv HTML→md）；保留不删
 ├── paper-digest.md     # ★ 仅论文输入：结构化摘要，证据层引用源
+├── paper-figures/      # ★ 抓下来的论文原图 + figures.json / figures.md（§6.5）
 ├── script.md           # 口播稿（节拍）
 ├── outline.md          # 开发计划（每章信息池条目带 locator）
 └── presentation/
+    └── public/paper/   # 选中要上屏的原图，拷到这里，代码里用 /paper/xxx.png
 ```
 
 ### 1.2 `paper-digest.md` 的 12 节（逐节填）
@@ -94,15 +96,21 @@ my-paper-video/
 6. **方法总览（input → process → output）**：先画**完整流程图**，再放大细节。
    初学者必须先有"地图"。
 7. **核心机制**：直觉 → 图 → 必要公式 → 微型样例（四步，见 §7）。
-8. **关键图表方程（带 locator + 复用决策）**—— 摘要的心脏。每个 artifact 一块：
+8. **关键图表方程（带 locator + 复用决策 + 原图文件）**—— 摘要的心脏。
+   每个 artifact 一块，四件事写全：**它证明什么 / 怎么复用（§6 决策树）/
+   忠实度注 / 原图文件名**（跑完 §6.5 抓图后回填）：
    ```
-   - Fig 2 (§3.1)：架构总览。证明：input→process→output 地图。
-     reuse：redraw（简化成 3 个盒子）；忠实度：保留数据流方向与模块命名。
-   - Table 3 (§4.2)：消融。证明：移除 router 后 GLUE 4.6→1.1。
-     reuse：redraw 成同坐标轴柱图（baseline vs 移除）；保留方差 ±0.3。
-   - Eq 4 (§3.2)：路由目标。reuse：4 步揭示，q/k/v 固定配色（见 §7）。
+   - Fig 1 (§3)：架构总览。证明：input→process→output 地图。
+     reuse：cite 原图 → paper-figures/fig-01.png（license：作者显式授权复制图表）
+     上屏：整张打底，再 focus 裁到编码器一侧细讲（§6.1）。
+     口播：要点名"论文里的图一长这样"（§6.2）。
+   - Fig 3 (附录)：注意力可视化，第 5 层某个头连 making → more difficult。
+     reuse：**定性材料，只能 cite** → fig-03.png。自己画热图 = 伪造实验结果（§6.3）。
+   - Table 2 (§6.1)：翻译结果。证明：EN-DE 28.4，超此前最好（含 ensemble）>2.0。
+     reuse：redraw 成同轴柱图（原表不便对比）；纵轴从 0 起、先画基线；
+     屏幕标"按 Table 2 重画"。
+   - Eq 4 (§3.2)：路由目标。reuse：animate，4 步揭示，q/k/v 固定配色（见 §7）。
    ```
-   每个 artifact 明确 **redraw / animate / cite** 取舍（§6）+ 忠实度注（不扭曲数据/坐标/刻度，保留方差与基线）。
 9. **结果**：数据集 / 基线 / 指标 / 头条增益 **+ 方差 + 公平性/稳定性说明**。
 10. **消融与失败案例**：移除每个模块会怎样；在什么数据 / 规模 / 条件下失效。
 11. **局限**：作者述的 + 讲者自己的（后者一律标 `infer`，§3）。
@@ -445,7 +453,7 @@ badge / locator / citation 的落位用 `--safe-*`（跟随主题的 stage paddi
 | **central-hero** | 核心结论 / 关键数字 / 一句话主张 / 失败案例聚焦 | 一个明确视觉中心，hero 80–140px，四周 ≥80px 留白 |
 | **left-fig-right-explain** | 模型结构 / 算法步骤 / 实验结果 | 左 ~65% 图/流程/实验，右 ~35% 当前结论（≤3 短句） |
 | **two-col-compare** | 旧/新、成功/失败、有/无模块 | 两栏**同尺度同坐标基准**，差异靠移动/遮罩/标记表达，别两边塞满文字 |
-| **whole→local-zoom** | 复杂架构 | 先看完整流程→当前模块高亮其余灰化→放大到全屏讲→回总图重新定位 |
+| **whole→local-zoom** | 复杂架构 | 先看完整流程→当前模块高亮其余灰化→放大到全屏讲→回总图重新定位。**优先直接在论文原图上做**（`<PaperFigure focus={…}>`，§6.1），比重画一张更可信也更省事 |
 | **chart-dominant** | 实验部分 | 图表占画面 ≥70%，每步只回答一个问题（"是否优于基线？"），不一次塞整张复杂表 |
 
 > 底部可留字幕安全区，但**别做永久页脚**。主文字 44–64px，重要结论 80px+；出处/
@@ -455,13 +463,90 @@ badge / locator / citation 的落位用 `--safe-*`（跟随主题的 stage paddi
 
 ## 6. 图表复用纪律（redraw / animate / cite）
 
-论文自带图表。每个要上屏幕的图/表，在 `paper-digest.md` §8 就定好**怎么复用**：
+论文自带图表。每个要上屏幕的图/表，在 `paper-digest.md` §8 就定好**怎么复用**。
+
+> ⚠️ **先纠正一个默认偏好**：不要一上来就全部 redraw。
+> **一篇论文最有辨识度的资产，就是它自己那张 Figure 1。** 观众之后去读原文时，
+> 靠的就是这张图对上号；全部重画等于把这份辨识度扔掉。而定性材料
+> （注意力热图、样例输出、失败案例）**根本不可能诚实地重画** —— 你重画的
+> 每一个像素都是编的。**这类图必须用原图。**
 
 | 复用方式 | 何时用 | 忠实度要求 |
 |---|---|---|
-| **cite**（截图原 fig，挂 locator） | 复杂图、难忠实重画的表 | 不改原样；标清来源 `Fig N` |
-| **redraw**（简化重画） | 简单图、想突出某部分 | **保留**数据/坐标/刻度/标签/方差/基线；重画要像重画，不冒充原图 |
-| **animate**（重建过程） | 流程/机制/推理过程 | 只为"演机制"，不为"好看"；演的数据点必须真实 |
+| **cite**（**用原图**，挂 locator + 出处） | ① 论文的招牌图（架构总览 / 主方法图）② **一切定性材料**：注意力可视化、样例输出、失败案例、照片 ③ 重画就会失真的复杂图 | 不改原样（**允许**裁切放大到某个区域、允许整体缩放；**不允许**改数值、改配色语义、改坐标）；必须标"论文原图"+ 作者 |
+| **redraw**（简化重画） | 数据图表，且你需要**控制坐标轴诚实性**（同轴、不截断、加方差）或原图信息密度过高 | **保留**数据/坐标/刻度/标签/方差/基线；**必须标"按 Fig N 重画"**，不许冒充原图 |
+| **animate**（重建过程） | 流程 / 机制 / 推理过程 | 只为"演机制"，不为"好看"；演的数据点必须真实；标"按 Fig N 演示" |
+
+**默认决策树**：
+
+```
+这张图是定性材料（热图 / 样例 / 照片 / 失败案例）？
+  └─ 是 → cite 原图。没有第二个选项，重画就是编数据。
+  └─ 否 ↓
+是论文的招牌图（Fig 1 架构 / 主方法图）？
+  └─ 是 → cite 原图打底；需要讲解时用 focus 裁切放大局部（§5 whole→local-zoom）
+          想额外做一版简化动画？可以，但**先给原图**再给你的简化版。
+  └─ 否 ↓
+是数据图表，且原图坐标轴不利于诚实对比（截断轴 / 缺方差 / 太密）？
+  └─ 是 → redraw，并标"按 Fig N 重画"
+  └─ 否 → cite 原图就够了，别做无谓的重画
+```
+
+### 6.1 上屏组件：`<PaperFigure>` / `<FigureCredit>`
+
+脚手架自带（`src/components/PaperFigure.tsx` + `src/styles/paper-figure.css`，
+无需 `--math` 之类的开关，默认就有）。它强制三件事：**出处、可辨的"原图 vs 重画"、
+可裁切放大**。
+
+```tsx
+import { PaperFigure, FigureCredit } from "../../components/PaperFigure";
+
+// 原图整张
+<PaperFigure src="/paper/fig-01.png" label="Fig 1" credit="Vaswani et al., 2017"
+             alt="Transformer 架构总览：左编码器右解码器" height={760} />
+
+// 原图裁切放大到某个区域（whole → local-zoom 的正确做法）
+<PaperFigure src="/paper/fig-03.png" label="Fig 3" credit="Vaswani et al., 2017"
+             alt="第 5 层某个头把 making 连到 more difficult"
+             focus={{ x: 38, y: 0, w: 40 }} height={620} />
+
+// 本章自己重画了图表 —— 也要标出处
+<FigureCredit label="Table 2" variant="redraw" credit="Vaswani et al., 2017" />
+```
+
+屏幕上分别渲染成 `Fig 1 · 论文原图`／`按 Table 2 重画`／`按 Fig 2 演示`，
+走 `data-figure-source="original|redraw|animated"` 属性驱动，与
+`data-evidence` 同一套约定。
+
+> **图片放哪**：`presentation/public/paper/`，代码里用 `/paper/fig-01.png` 引用。
+
+### 6.2 口播稿也要点到原图（★ 别让画面独自承担）
+
+画面挂了原图，**口播稿必须配合**，否则观众不知道自己在看论文里的东西。
+在 `script.md` 里用自然的说法把它点出来：
+
+- ✓「论文里的图一长这样 —— 左边编码器，右边解码器。」
+- ✓「这是作者原图，第五层的某个头，把 making 一路连到了 more difficult。」
+- ✓「注意这张是论文自己画的，不是我重画的。」
+- ✓（重画时）「这张我按 Table 2 重画了一遍，把纵轴拉回从零开始。」
+
+**红线**：
+
+- **不要**只在画面角标写出处、口播只字不提 —— 观众听的时候不知道该看哪。
+- **不要**把原图当背景装饰一闪而过。**放了原图就要讲它**，至少讲清
+  "看哪一块、这一块在说什么"。
+- 用了 `focus` 裁切时，口播要交代**这是整张图的哪一部分**，否则观众
+  以为论文原图就长这样。
+
+### 6.3 定性材料的铁律
+
+注意力热图、生成样例、失败案例、真实照片 —— **只能 cite 原图**。
+拿不到原图就**承认拿不到**（placeholder 卡写明「Fig N 原图未取得」），
+**绝不允许**自己画一张"看起来像热图"的东西。自己画的热图是**伪造实验结果**，
+比缺图严重得多。
+
+> 上一版本的实践里，正是这里出过事：明明 arXiv HTML 里图就在那儿，
+> 却直接上了 placeholder。**先跑 §6.5 的抓图脚本，再决定要不要 placeholder。**
 
 **铁律**：
 
@@ -471,6 +556,51 @@ badge / locator / citation 的落位用 `--safe-*`（跟随主题的 stage paddi
   同坐标轴、误差棒、不误导。**本文件不复制那些规则**，按名引用 dataviz skill。
 - 复杂表（论文里那种 8 列大表）**别整张搬上屏**：先隐藏非关键行列，按 step 逐步
   恢复必要上下文，每步只回答一个问题。
+
+### 6.5 抓原图（Phase 0 就做，别等到画章节才发现没图）
+
+**arXiv 有 HTML 版时（2023 年后的论文基本都有）—— 一条命令**：
+
+```bash
+node <skill>/scripts/fetch-paper-figures.mjs 1706.03762v7 --out ./paper-figures
+```
+
+它做三件事：解析 LaTeXML 的 `<figure>` 块 → 按 `Fig N` / `Table N` 重命名下载
+（多子图自动拆成 `fig-02a` / `fig-02b`）→ 写出 `figures.json` + `figures.md`
+清单（含 caption）。把 `figures.md` 的表格贴进 `paper-digest.md` §8，
+逐行填「可用」和「复用决策」。
+
+选好要用的图之后：
+
+```bash
+mkdir -p presentation/public/paper
+cp paper-figures/fig-01.png presentation/public/paper/
+```
+
+**只有 PDF 时**（老论文 / 非 arXiv）：
+
+```bash
+pdfimages -png paper.pdf out/img        # 抽内嵌位图（矢量图抽不出来）
+pdftoppm -png -r 300 -f 3 -l 3 paper.pdf out/page3   # 整页高清渲染，再手动裁
+```
+
+矢量图 `pdfimages` 抽不到，就用 `pdftoppm` 出整页再裁 —— **300 dpi 起步**，
+录屏会放大到 1920 宽，低分辨率糊得很明显。抽完自己手写 `figures.json`。
+
+**许可与署名**（做之前扫一眼，别跳过）：
+
+- arXiv 每篇的 license 不同：`perpetual non-exclusive` / `CC-BY` / `CC-BY-NC` /
+  `CC-BY-SA` 等，写在 abs 页左下角。HTML 版顶部也常有一行。
+- 有些论文会**显式授权**复制图表 —— 例如 Attention Is All You Need 开头就写了
+  "Google hereby grants permission to reproduce the tables and figures in this
+  paper solely for use in journalistic or scholarly works"。这种直接用。
+- **无论哪种 license，画面上都必须署名**（`<PaperFigure credit="…">` 会渲染），
+  片尾或简介里给出论文链接。
+- license 明确禁止转载、或查不到 license 时：**降级为 redraw**（数据图）或
+  **placeholder + 口播说明**（定性图），不要硬用。
+
+> 📄 抓图属于 **Phase 0**（和 `paper-digest.md` 同期）。等到 Phase 2 写章节
+> 才发现"没图"，那时候的默认反应就是随手打个 placeholder —— 而图其实一直都在。
 
 ---
 
@@ -556,6 +686,14 @@ import { Formula } from "../../components/Math";
     要么按四拍讲透，要么换成大白话，**不许留着**（§1.2 第 5 节台账）。
 13. **★ 类比取代事实** → 比喻讲得很漂亮，但从没落回论文原话和 locator。
     观众记住了你的比喻，记不住这篇论文（§2.5.4）。
+14. **★ 该用原图却自己画** → 把注意力热图 / 样例输出 / 失败案例"重画"一遍。
+    这是**伪造实验结果**，不是设计选择（§6.3）。
+15. **★ 没抓图就打 placeholder** → arXiv HTML 里图明明就在，却先认输。
+    先跑 §6.5 的抓图脚本，再谈缺不缺图。
+16. **★ 原图上屏但口播不提** → 观众不知道自己在看论文里的东西，也不知道该看哪一块。
+    放了原图就要讲它（§6.2）。
+17. **★ 重画冒充原图** → 屏幕上没有"按 Fig N 重画"的标注，观众以为你的坐标轴
+    就是论文的坐标轴（§6.1）。
 
 ---
 
@@ -585,6 +723,17 @@ import { Formula } from "../../components/Math";
 - [ ] 类比讲完**落回论文**了吗（原话 + locator），还是让比喻取代了事实？
 - [ ] 稿子里还有**悬空术语**吗 —— 出现过、但既没讲也没换成大白话的词？
 - [ ] 长度是按**概念预算**（§2.5.5）算的，不是按字数比例砍出来的？
+
+**原图与图表自检**（§6，v1.5 新增）：
+
+- [ ] Phase 0 跑过 `fetch-paper-figures.mjs` 了吗？还是直接就 placeholder 了？
+- [ ] 定性材料（注意力图 / 样例 / 失败案例）**全部用原图**，没有一张是自己画的？
+- [ ] 论文的招牌图（Fig 1）上屏了吗？还是被一张自制简图顶掉了？
+- [ ] 每张上屏的图都标了出处：原图标「Fig N · 论文原图 + 作者」，
+      重画标「按 Fig N 重画」？
+- [ ] license 查过了吗？署名到位吗？
+- [ ] **口播稿点到原图了吗**（"论文里的图一长这样…"），不是只有画面角标？
+- [ ] 用 `focus` 裁切的，口播交代了这是整张图的哪一部分？
 
 **证据层自检**：
 
@@ -642,6 +791,7 @@ import { Formula } from "../../components/Math";
 | 节点 | 默认会停 | 静默默认 |
 |---|---|---|
 | Phase 0 digest | —— | agent 自做 `paper-digest.md`（**自判 paper type + 写理由**，§1.2 第 2 节）；**前置知识台账照填不误**（§1.2 第 5 节）—— 静默省的是"等用户拍板"，不是省这一节 |
+| 原图抓取（§6.5） | —— | **默认抓**：arXiv 有 HTML 版就跑 `fetch-paper-figures.mjs`，招牌图与定性材料一律用原图。静默模式下**不许**跳过抓图直接 placeholder |
 | 概念深度（§2.5） | —— | 默认**讲透**：必讲概念一律走四拍，长度按概念预算（§2.5.5）算。**静默模式下不许为了短而砍解释** —— 宁可交一条 30 分钟但讲得明白的片子 |
 | Checkpoint Plan（5+1 件事） | 停 | 全默认：script/outline 取自检后版；**主题取 `tufte-ink`**（论文默认，§11）；素材缺的用 placeholder；开发模式取 **B 顺序**；论文第 6 项：type 已自判、locator 尽量挂、claim vs proven 边界自标、图表默认 cite/redraw |
 | Phase 2.2 第 1 章验收 | 停 | 不停：主线程做完 + 跑完工自检 + 修 fail → 直接进第 2 章 |
