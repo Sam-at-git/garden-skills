@@ -33,6 +33,11 @@ transformer-video/
 # web-video-presentation skill output projects
 mypresentations/
 
+# Local skill install (project-level symlink under .claude/skills/) — kept
+# machine-specific. Clone this repo and rerun `ln -s ../../skills/<name>
+# .claude/skills/<name>` to install locally.
+.claude/skills/
+
 .agents/
 
 # temp/
