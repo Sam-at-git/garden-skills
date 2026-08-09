@@ -30,6 +30,9 @@ garden-gpt-image-2/
 # 目前它放在仓库外的同级目录，这条是防御性的：万一哪天挪进来，不会被误提交。
 transformer-video/
 
+# web-video-presentation skill output projects
+presentation/
+
 .agents/
 
 # temp/
