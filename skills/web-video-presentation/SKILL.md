@@ -55,8 +55,20 @@ Phase 4   录屏 + 后期
 
 工作目录约定（agent 在用户当前目录下创建 / 编辑）：
 
+> **每个 paper / 口播 = 一个独立项目**，放在 `mypresentations/<id>/`
+> 下，**禁止落到 `my-video/` 这种共享目录**——后者会被后续 paper 覆盖。
+>
+> `<id>` 取值（按这个优先级，slug 自动 sanitize）：
+> 1. 用户给的口播主题 / 标题（中文/英文都行，kebab-case，例如
+>    `agent-fundamentals`、`moss-xiaozhi-3`）
+> 2. 论文 id（arXiv 用 `arxiv-2607.22997v1`，DOI / 顶会用 paper-short-name，
+>    例如 `gpt-image-2`、`scaling-monosemanticity`）
+>
+> 非论文口播、临时 demo、给客户单次的产物可放 `mypresentations/_scratch/<id>/`
+> —— 但也**必须放在 `mypresentations/` 下**，绝不写到 `my-video/`。
+
 ```
-my-video/
+mypresentations/<id>/
 ├── article.md          # 用户给原文时必有 —— 不删！开发阶段画面信息源
 ├── paper-digest.md     # ★ 仅论文输入：结构化摘要（带 locator），证据层引用源
 ├── paper-figures/      # ★ 仅论文输入：抓下来的论文原图 + figures.json（PAPER-INTERPRETATION §6.5）
@@ -106,6 +118,29 @@ my-video/
    走同样流程。
 3. **自检（兜底）**：当前 agent 都没有上述能力，就自己**严格逐项**
    核查 —— 不允许目测一遍就放行。
+
+### 验证通道 —— 不要用 ad-hoc shell 手搓验证
+
+自检 / 核查时按下面优先级选工具。**每一条 ad-hoc shell（`python3 -c` /
+`node -e` / `awk` / 临时 `grep` 读 `/tmp` dump）都是一次人干预确认**——
+本 Skill 要消灭的是这类"杂务型确认"，把人留在**决策型节点**（Checkpoint
+Plan / 第 1 章验收 / Checkpoint Audio / 主题与稿子取舍）上。
+
+1. **读文件 / 搜文件 → Read / Grep / Glob 工具**（零确认）。核查文件内容
+   用这三个工具，**不要**用 shell 的 `cat` / `grep` / `awk`。
+2. **机器可判定的结构不变量 → 具名 npm 脚本**（已被 allowlist 覆盖，
+   跨项目 / 章节 / 端口永久免确认）：
+   - `npm run layout:check` —— 已覆盖 **narrations.ts 的 step 数 ↔ 章节代码
+     `if (step===N)` 最大 N + 1**（rule 名 `step-count-mismatch`）↔
+     `data-composition` 合法性 ↔ 主题色 / 字 token。**这条不变量不要再
+     手搓 `node -e` 验**，直接跑它。
+   - `npm run extract-narrations`、`npx tsc --noEmit` 同理。
+3. **需要判气质 / 反 AI 味 / 双源原则 → reviewer agent**（Agent Teams /
+   subagent）：它用 Read 工具读文件 = 零确认，且视角比自检独立。
+
+只有上面三条都不覆盖的检查才考虑 shell；此时**优先把它沉淀成一条具名
+npm 脚本**（写进项目 `scripts/` + `package.json`），一次性消灭整类确认，
+而不是每次现场拼 `node -e`。
 
 **铁律**：拿到结论后**先按 fail 项把产出改完**，再向用户汇报"做完了
 + 自检结论 + 改了什么"。**直接拿原始结论汇报但不修复 = 违规**。

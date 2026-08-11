@@ -250,6 +250,12 @@ emoji 当图标 / 假数据假 logo / 整章同一种入场动画 / 每屏右下
 >
 > **拿到自检结论后**：先按 fail 项**改完代码**，然后再向用户汇报"做完
 > 了 + 自检结论 + 改了什么"。**直接拿原始结论汇报但不修复 = 违规**。
+>
+> 🔧 **验证用工具，别手搓 shell**：结构核查走 `npm run layout:check` +
+> `npx tsc --noEmit`（已覆盖下方多数 checkbox，含 step 数一致性）；读 /
+> 搜文件用 Read / Grep 工具；气质判断开 reviewer agent。**禁止**用
+> `python3 -c` / `node -e` / `awk` 现场拼验证——每条都是一次人干预确认
+> （详见 SKILL.md「验证通道」）。
 
 完工自检分**三层**（**全部过 = 可以汇报完成**）：
 
@@ -288,6 +294,8 @@ emoji 当图标 / 假数据假 logo / 整章同一种入场动画 / 每屏右下
       未跨章 import，未修改 `chapters.ts` 之外的共享文件
 - [ ] **`narrations.ts` 存在**且 `narrations.length` === 章节代码里
       `if (step === N)` 用到的最大 N + 1（不一致 = Auto 模式录屏会错位）
+      —— **已被 `npm run layout:check` 的 `step-count-mismatch` rule 机器
+      覆盖，跑那条命令即可，不要手搓 `node -e` 验**
 - [ ] **每条 narration 文本与 `script.md` 对应段落语义一致**（关键短语 /
       数字 / 引用全部保留，可为 TTS 微调标点断句）—— 录屏画外音应当能被
       观众听成同一段稿子

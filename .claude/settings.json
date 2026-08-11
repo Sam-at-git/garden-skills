@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PRESENTATION_TTS=* npm run *)",
+
+      "Bash(npm run *)",
+      "Bash(npx tsc *)",
+      "Bash(npx tsx *)",
+
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(grep *)",
+      "Bash(rg *)",
+      "Bash(find *)",
+      "Bash(jq *)",
+      "Bash(file *)",
+
+      "Bash(node scripts/inspect-layout.mjs *)",
+      "Bash(node */fetch-paper-figures.mjs *)",
+      "Bash(bash */scaffold.sh *)"
+    ]
+  }
+}
