@@ -399,6 +399,14 @@ badge / locator / citation 的落位用 `--safe-*`（跟随主题的 stage paddi
   `infer` / `background` 必须为 null** —— 论文里没有的话，不能指向论文的章节号。
 - **左上 citation chip**：全片常驻，**不是**每步换。
 
+> **三个 chip 都坐在页边（margin band），不是内容角落。** `evidence.css` 把它们
+> 定在 `calc(var(--safe-*) - 52px)` —— 即舞台上下边距里、内容第一行/最后一行的
+> **上方/下方**（约 22px 间隔），像杂志的页眉页脚 folio。**千万别**把它们定回
+> `var(--safe-top/bottom)`：那个值正好等于 `scene-pad` 的 padding，也就是章节内容
+> （kicker / 标题 / 脚注）的起止点，定在那儿会和左上、左下的正文重叠。设计章节时，
+> 左上角和左下角是 chip 的专属区，正文第一行/最后一行不要贴到那里。
+
+
 > 一个 step 可以挂**多个** badge（如实验章最后一步：数字是 `supported`，讲者对
 > "公不公平"的评价是 `infer`）—— `infer` 那个必须视觉更弱。EXAMPLES 里
 > `paper-experiment-chart/` 演示这种混合。
@@ -743,6 +751,9 @@ import { Formula } from "../../components/Math";
 - [ ] `infer` / `background` 步骤的 locator 都是 `null`（没有指向论文章节号）
 - [ ] `paper-digest.md` 里每个上屏的 artifact 都有 redraw/animate/cite 决策 + 忠实度注
 - [ ] 角落常驻 citation chip 从 step 1 就在，出处诚实
+- [ ] **左上 citation / 左下 locator / 右上 badge 不与正文重叠**——chip 在页边
+      margin band（evidence.css 已 calc 偏移），正文第一行/最后一行在内容区，二者
+      垂直分开；若某步正文贴到角落，给该步首元素加 margin-top 或调整构图（§3.4）
 - [ ] 基线/比较图同坐标轴 + 有方差 + 先画基线（§4 ★）
 - [ ] 公式（若有）走四步揭示，符号固定配色，且 ≤ 口播时长
 

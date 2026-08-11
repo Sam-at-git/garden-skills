@@ -14,7 +14,7 @@
  *     • hero numbers   — italic Source Serif, tabular figures, very tight
  *     • rule           — 1px hairline solid (ink)
  *     • card           — 4px tiny radius (barely-there refinement)
- *     • surface        — clean porcelain + a faint sidenote column hairline
+ *     • surface        — clean porcelain, no decorative pattern
  *     • motion         — extra-quiet, longer durations
  * ───────────────────────────────────────────────────────────────────── */
 :root {
@@ -70,17 +70,11 @@
   --ev-infer:       var(--text-faint);
   --ev-background:  var(--text-mute);   /* 旁白：比 infer 稍实，但无边框 */
 
-  /* SIGNATURE: a single faint sidenote-column hairline at ~71% — suggests
-     a margin-notes column without drawing a hard line. Noticed once, then
-     forgotten. (Drawn by .stage-frame::after in base.css.) */
-  --surface-pattern:
-    linear-gradient(
-      to right,
-      transparent 71.4%,
-      var(--rule) 71.4%,
-      var(--rule) 71.5%,
-      transparent 71.5%
-    );
+  /* SIGNATURE removed: the old Tufte sidenote-column hairline at ~71% read
+     as a stray vertical bar on the right side of every page, so it is now
+     off by default. (Drawn by .stage-frame::after in base.css; --surface-pattern
+     is set to none so no background-image is applied.) */
+  --surface-pattern: none;
   --surface-pattern-size: 100% 100%;
-  --surface-pattern-opacity: 0.55;
+  --surface-pattern-opacity: 0;
 }

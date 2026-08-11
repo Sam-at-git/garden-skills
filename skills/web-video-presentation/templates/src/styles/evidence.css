@@ -12,14 +12,21 @@
  * `data-evidence="fact|supported|infer|background"` — the same
  * attribute-driven convention as data-composition / data-role.
  *
- * Placement uses --safe-side / --safe-top, which track the stage padding
- * (composition.css §0), so badges land inside the safe area on themes with
- * wide margins instead of hugging a hard-coded 48px.
+ * Placement uses --safe-side for the LEFT/RIGHT edge (tracks stage padding,
+ * composition.css §0). For the TOP/BOTTOM edge the chips sit in the MARGIN
+ * band — calc(var(--safe-*) - 52px) — NOT at the content origin. Reason:
+ * --safe-top / --safe-bottom equal the scene-pad padding, i.e. the very corner
+ * where chapter content (a kicker, a headline, a footnote) starts. Anchoring
+ * chips there made them overlap chapter text in the top-left / bottom-left
+ * corners. Lifting them ~52px into the margin keeps a consistent ~22px gap
+ * above/below content for every theme, so the chips read as folio labels in
+ * the margin instead of colliding with the first/last line of the scene.
+ * (Min stage padding is 80px, so the offset never goes negative.)
  * ───────────────────────────────────────────────────────────────────── */
 
 .ev-badge {
   position: absolute;
-  top: var(--safe-top, 80px);
+  top: calc(var(--safe-top, 80px) - 52px);
   right: var(--safe-side, 96px);
   z-index: var(--depth-accent, 20);
   padding: 6px 14px;
@@ -70,7 +77,7 @@
 
 .ev-locator {
   position: absolute;
-  bottom: var(--safe-bottom, 80px);
+  bottom: calc(var(--safe-bottom, 80px) - 52px);
   left: var(--safe-side, 96px);
   z-index: var(--depth-accent, 20);
   color: var(--text-mute);
@@ -79,7 +86,7 @@
 
 .ev-citation {
   position: absolute;
-  top: var(--safe-top, 80px);
+  top: calc(var(--safe-top, 80px) - 52px);
   left: var(--safe-side, 96px);
   z-index: var(--depth-accent, 20);
   max-width: 40%;
