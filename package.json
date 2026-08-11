@@ -22,5 +22,12 @@
     "readme:sync": "node scripts/release/update-readme.mjs",
     "readme:check": "node scripts/release/update-readme.mjs --check",
     "validate": "npm run list && npm run pack:all && npm run readme:check"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.11",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "katex": "^0.18.3"
   }
 }
