@@ -6,6 +6,15 @@
 #
 # Strengths: Chinese narration quality is consistently good; lots of
 # voice options; one-line CLI call.
+#
+# Env:
+#   PRESENTATION_TTS_VOICE  voice id — `mmx speech voices` lists them.
+#                           Chinese ids look like
+#                           "Chinese (Mandarin)_Radio_Host".
+#   PRESENTATION_TTS_LANG   language boost, e.g. Chinese. MiniMax picks
+#                           pronunciation and prosody noticeably better when
+#                           told which language the text is in — worth setting
+#                           for any non-English narration.
 # ────────────────────────────────────────────────────────────────────
 
 tts_check() {
@@ -37,11 +46,19 @@ tts_synthesize() {
   local out="$2"
   local voice="${3:-}"
 
+  local lang="${PRESENTATION_TTS_LANG:-}"
+
   # Branch instead of using an empty array — runner uses `set -u`, and
   # macOS-default bash 3.2 fires "unbound variable" on "${arr[@]}" when
-  # arr is empty. The two-branch form is portable to old bash.
-  if [[ -n "$voice" ]]; then
+  # arr is empty. The four-branch form is portable to old bash.
+  if [[ -n "$voice" && -n "$lang" ]]; then
+    mmx speech synthesize --voice "$voice" --language "$lang" \
+      --text "$text" --out "$out" >/dev/null 2>&1
+  elif [[ -n "$voice" ]]; then
     mmx speech synthesize --voice "$voice" --text "$text" --out "$out" \
+      >/dev/null 2>&1
+  elif [[ -n "$lang" ]]; then
+    mmx speech synthesize --language "$lang" --text "$text" --out "$out" \
       >/dev/null 2>&1
   else
     mmx speech synthesize --text "$text" --out "$out" \

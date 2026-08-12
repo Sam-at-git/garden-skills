@@ -83,13 +83,22 @@ mypresentations/<id>/
     ├── scripts/
     │   ├── extract-narrations.ts   # 扫所有 narrations.ts → audio-segments.json
     │   ├── synthesize-audio.sh     # provider-agnostic runner（循环 segments）
+    │   ├── audio-report.mjs        # 每章时长 + 偏长/偏短的步（npm run audio:report）
+    │   ├── build-audio-track.mjs   # 拼一条连续旁白音轨（npm run audio:track）
+    │   ├── record-auto.mjs         # 无头驱动 ?auto=1 录整片（npm run video:record）
+    │   ├── build-video.mjs         # 裁切 + 对齐旁白 + 编码出 mp4（npm run video:mux）
     │   └── tts-providers/          # 每 provider 一个 .sh（内置 3 个）
     │       ├── README.md           # 三函数契约 + 5 段现成代码片段（11labs / edge-tts / say / azure / gcloud）
     │       ├── voxcpm.sh           # ★ 默认 —— 本地声音克隆（常驻 server + 参考音频；4.6G 模型外部）
     │       ├── minimax.sh          # 中文音色稳，用 mmx-cli（PRESENTATION_TTS=minimax）
     │       └── openai.sh           # OpenAI TTS（curl + OPENAI_API_KEY；PRESENTATION_TTS=openai）
     ├── audio-segments.json         # extract 产出（合成前 review）
-    └── public/audio/<id>/<N>.mp3   # 可选：合成的音频
+    ├── public/audio/<id>/<N>.mp3   # 可选：合成的音频
+    └── render/                     # 可选：录制与出片产物（已 gitignore）
+        ├── <项目>.mp4              # 成片 1920×1080 H.264 + AAC
+        ├── chapters.txt            # 章节时间戳，贴视频简介
+        ├── raw.webm                # 原始录制，留着可只重跑 video:mux
+        └── cues.json               # 每步边界 + 裁切矩形
 ```
 
 > **关键**：`narrations.ts` 是 step 数和音频合成的**唯一真相源**。
@@ -487,23 +496,28 @@ npm run synthesize-audio             # 默认 voxcpm，增量；用克隆声音�
 PRESENTATION_TTS=minimax npm run synthesize-audio   # MiniMax（要 mmx-cli + key）
 PRESENTATION_TTS=openai  npm run synthesize-audio   # OpenAI（要 OPENAI_API_KEY）
 # 或自定义：写一个 scripts/tts-providers/<name>.sh，见该目录的 README.md
+# 非英文旁白记得给 language boost（minimax）：PRESENTATION_TTS_LANG=Chinese
+npm run audio:report                 # 每章时长 + 偏长/偏短的步
 ```
 
-合成完告诉用户：输出位置 / 总段数 / 哪些段时长异常（太长 = 该 step 拆
-分；太短 = 文案太薄）—— 给最后一次校准节奏的机会。然后进入 Phase 4。
+合成完**跑一次 `npm run audio:report`**，把输出位置 / 总时长 / 时长异常的段
+（太长 = 该 step 拆分；太短 = 文案太薄）告诉用户 —— 给最后一次校准节奏的
+机会。然后进入 Phase 4。
 
 ---
 
 ## Phase 4 —— 录屏 + 后期
 
-详见 [`references/RECORDING.md`](references/RECORDING.md)。两种路径：
+详见 [`references/RECORDING.md`](references/RECORDING.md)。三种路径：
 
 | 场景 | 推荐路径 |
 |---|---|
-| Phase 3 已合成音频 | **Auto 模式一镜到底**：浏览器开 `localhost:5173/?auto=1` → 按 SPACE → 整片自动播完 → 停录 → 裁头尾即成片，**无需后期对音轨** |
-| Phase 3 跳过 | 默认 Manual 模式手动点击推进 → 后期任意剪辑工具配音 |
+| 已合成音频 · **有桌面** | **Auto 模式一镜到底**：浏览器开 `localhost:5173/?auto=1` → 点蒙层启动 → 整片自动播完 → 停录 → 裁头尾即成片，**无需后期对音轨** |
+| 已合成音频 · **没有桌面**（服务器 / 容器 / agent 环境） | **无头管线**：`npm run video:record` → `npm run video:mux` → `render/<项目>.mp4`。先 `-- --max-steps=6` 冒烟测 |
+| 跳过了音频 | 默认 Manual 模式手动点击推进 → 后期任意剪辑工具配音 |
 
 > agent 在 Phase 3 / Checkpoint Audio 后**主动告诉用户**适合的录屏路径。
+> agent 自己出片时走无头管线 —— 它不需要屏幕录制软件。
 
 ---
 
@@ -561,6 +575,6 @@ Part 8「常见反馈速查」。**关键**：先定位是哪一层（节奏 / �
 | [`references/AUDIO.md`](references/AUDIO.md) | Phase 3 才读 | provider-agnostic 音频合成流程、内置 minimax / voxcpm 用法、换 provider 路径、故障排查 |
 | [`references/voices/`](references/voices/) | 用 voxcpm 克隆声音时 | 自带 Sam 克隆样本 + 加自己声音的流程（克隆心智模型） |
 | [`templates/scripts/tts-providers/README.md`](templates/scripts/tts-providers/README.md) | 换 / 加 TTS provider 时 | 三函数契约 + 内置 3 个 (minimax / openai / voxcpm) + 5 种现成代码片段（ElevenLabs / edge-tts / macOS say / Azure / Google） |
-| [`references/RECORDING.md`](references/RECORDING.md) | Phase 4 才读 | 录屏工具 + 后期合成 |
+| [`references/RECORDING.md`](references/RECORDING.md) | Phase 4 才读 | 录屏工具 + 后期合成 + **无头录制管线**（没有桌面时用 `video:record` / `video:mux` 出 mp4） |
 | [`themes/`](themes) | Checkpoint Plan / Phase 1.2 时翻 | 内置主题（每个含 `theme.json` + `tokens.css`） |
 | [`scripts/scaffold.sh`](scripts/scaffold.sh) | Phase 2.1 跑一次 | 一键项目脚手架 |

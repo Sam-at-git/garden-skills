@@ -122,6 +122,20 @@ PRESENTATION_TTS=minimax npm run synthesize-audio -- --force   # 全部重合成
 PRESENTATION_TTS=minimax npm run synthesize-audio -- --voice=<voice-id>  # 指定音色
 ```
 
+**非英文旁白记得加 language boost** —— MiniMax 被告知语种之后，发音和语调
+明显更稳：
+
+```bash
+PRESENTATION_TTS=minimax \
+  PRESENTATION_TTS_VOICE="Chinese (Mandarin)_Radio_Host" \
+  PRESENTATION_TTS_LANG=Chinese \
+  npm run synthesize-audio
+```
+
+音色 id 用 `mmx speech voices` 列，中文的长这样：
+`Chinese (Mandarin)_Radio_Host` / `_Sincere_Adult` / `_Gentleman` / `_News_Anchor`。
+讲解片用 Radio_Host 一类的稳。
+
 启动时 runner 会先调 provider 的 `tts_check`：
 
 - mmx 未安装 → 报 `mmx CLI not found in PATH`，并打印安装说明
@@ -229,15 +243,24 @@ npm run synthesize-audio -- --provider=edge-tts
 合成完后跑：
 
 ```bash
-for f in public/audio/*/*.mp3; do
-  d=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$f")
-  echo "$f  ${d}s"
-done
+npm run audio:report
 ```
 
-把每条的实际秒数汇总告诉用户。**重点关注 ≥ 15s 的条目**——口播太长意味
-着该 step 的 narration 写得过密，或者 step 没拆够。让用户决定**改稿子
-重合**还是**回章节代码拆 step**。
+它打每章时长、全片总长、平均每步秒数，并单独列出两类异常：
+
+- **偏长（> 26s）** —— 一屏挂太久。要么拆 step，要么确认画面在这一步**内部**
+  确实还在生长（分句点亮 / 逐项落位 / 数字滚动），不是静止 26 秒。
+- **偏短（< 3s）** —— 文案太薄，撑不起一整屏。例外：论文模式的开场招呼
+  （「大家好！」）本来就该 ≤1.5s，那条可以无视。
+
+把总时长和异常项汇总告诉用户，让他决定**改稿子重合**还是**回章节代码拆
+step**。（这条以前是一段 shell 循环 —— 每跑一次就是一次权限确认，所以沉淀
+成了具名脚本，见 SKILL.md「验证通道」。）
+
+> 想要一条连续的旁白音频（播客剪辑 / 丢进剪辑软件）：`npm run audio:track`
+> → `render/narration.mp3` + `render/chapters.txt`。
+> **但它不适合跟录屏对轨** —— 它假设每步零加载开销，跨上百步会漂。录屏对
+> 齐走 `npm run video:mux`，见 [`RECORDING.md`](RECORDING.md)。
 
 ---
 

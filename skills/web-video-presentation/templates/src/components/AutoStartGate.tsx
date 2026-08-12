@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import "./AutoStartGate.css";
 
 interface Props {
@@ -11,8 +12,27 @@ interface Props {
  * gate and let the user press Space (or click) to release auto playback.
  *
  * After the user starts, the gate is hidden for the rest of the session.
+ *
+ * ⚠️ Space is ALSO the stepper's "next" binding (hooks/useStepper.ts listens
+ * for `" "` on window). Without the capture-phase handler below, the single
+ * press that dismisses this gate ALSO advances the deck — so every Auto-mode
+ * recording silently loses step 0 of chapter 1, with no error anywhere. The
+ * handler runs in the capture phase, swallows that first press, and starts
+ * playback itself; the stepper never sees it.
  */
 export function AutoStartGate({ visible, onStart }: Props) {
+  useEffect(() => {
+    if (!visible) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== " " && e.key !== "Enter") return;
+      e.preventDefault();
+      e.stopPropagation();
+      onStart();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [visible, onStart]);
+
   if (!visible) return null;
   return (
     <div

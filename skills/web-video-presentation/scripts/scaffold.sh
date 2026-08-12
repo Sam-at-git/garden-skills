@@ -190,6 +190,15 @@ chmod +x scripts/synthesize-audio.sh
 # in chapter TSX/CSS before opening a browser. See references/VISUAL-QA.md.
 cp "$TEMPLATES/scripts/inspect-layout.mjs"     scripts/inspect-layout.mjs
 
+# Audio measurement + the headless record → mux pipeline (references/RECORDING.md).
+# record-auto/build-video only need ffmpeg + Playwright at RUN time, so they
+# ship unconditionally — nothing is installed for projects that never record
+# headlessly.
+cp "$TEMPLATES/scripts/audio-report.mjs"       scripts/audio-report.mjs
+cp "$TEMPLATES/scripts/build-audio-track.mjs"  scripts/build-audio-track.mjs
+cp "$TEMPLATES/scripts/record-auto.mjs"        scripts/record-auto.mjs
+cp "$TEMPLATES/scripts/build-video.mjs"        scripts/build-video.mjs
+
 mkdir -p scripts/tts-providers
 cp "$TEMPLATES/scripts/tts-providers/README.md"   scripts/tts-providers/README.md
 cp "$TEMPLATES/scripts/tts-providers/minimax.sh"  scripts/tts-providers/minimax.sh
@@ -220,6 +229,7 @@ scripts/voxcpm/voices/*.wav # voice references — the scaffold re-supplies the
                             # bundled one; your own belong outside git
 public/audio/               # synthesized narration mp3s
 layout-check.json           # npm run layout:check report
+render/                     # recording + mux output (raw.webm is ~100MB/25min)
 GITIGNORE
 
 # Wire the audio scripts into npm so contributors don't have to remember
@@ -232,6 +242,10 @@ p.scripts = Object.assign({}, p.scripts, {
   "extract-narrations": "tsx scripts/extract-narrations.ts",
   "synthesize-audio":   "bash scripts/synthesize-audio.sh",
   "layout:check":       "node scripts/inspect-layout.mjs .",
+  "audio:report":       "node scripts/audio-report.mjs",
+  "audio:track":        "node scripts/build-audio-track.mjs",
+  "video:record":       "node scripts/record-auto.mjs",
+  "video:mux":          "node scripts/build-video.mjs",
 });
 fs.writeFileSync("package.json", JSON.stringify(p, null, 2) + "\n");
 
@@ -292,19 +306,32 @@ cat <<EOF
     数组长度 = step 数，是音频合成 + Auto 模式的唯一真相源。
   • 章节改了就 bump src/hooks/useStepper.ts 的 STORAGE_KEY 末尾版本号。
 
-录制：
-
-  • 手动模式：直接打开 http://localhost:5174（点击 / 方向键推进）
-  • 半自动：URL 加 ?audio=1 — 音频跟 step 切，但你手动推进
-  • 全自动录屏：URL 加 ?auto=1 — 按一次 SPACE 启动，整片自动播 + 推进
-                按 M 键随时切换三种模式。
-
 音频合成（可选，录制前做）：
 
   npm run extract-narrations    # 扫所有章节 narrations.ts → audio-segments.json
   npm run synthesize-audio      # 默认 minimax provider 合成 → public/audio/<id>/<step>.mp3
                                 # 换 provider：PRESENTATION_TTS=<name> npm run synthesize-audio
+                                # 非英文旁白记得给 language boost：
+                                #   PRESENTATION_TTS_LANG=Chinese
                                 # 自定义 / 没装 mmx 见 scripts/tts-providers/README.md
+  npm run audio:report          # 每章时长 + 偏长 / 偏短的步（录之前先看这个）
+
+录制 —— 三条路：
+
+  • 手动：直接打开 http://localhost:5174（点击 / 方向键推进），自己开录屏软件
+  • 半自动：URL 加 ?audio=1 — 音频跟 step 切，但你手动推进
+  • 全自动：URL 加 ?auto=1 — 整片自动播 + 推进；按 M 键随时切换三种模式
+
+  有桌面时用 ?auto=1 + OBS 一镜到底最省事。**没有桌面（服务器 / 容器）就用
+  这两条命令**，无头跑完再合成，音画对齐不用手动对：
+
+  npm run video:record          # 驱动 ?auto=1 录完整片 → render/raw.webm + cues.json
+  npm run video:mux             # 裁切 + 按 cues 对齐旁白 + 编码 → render/<项目>.mp4
+
+  先冒烟测一遍，别拿 20 分钟去试错：
+      npm run video:record -- --max-steps=6
+
+  详见 $SKILL_DIR/references/RECORDING.md。
 
 写章节时必读（单一入口，路径在 SKILL 仓库内）：
 
