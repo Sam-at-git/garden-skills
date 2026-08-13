@@ -81,6 +81,8 @@ mypresentations/<id>/
     │   └── narrations.ts     # ★ step 数 + 口播文本的唯一真相源
     ├── public/paper/         # ★ 仅论文输入：选中上屏的论文原图
     ├── scripts/
+    │   ├── inspect-layout.mjs      # 静态结构检查（npm run layout:check）
+    │   ├── smoke-render.mjs        # ★ 真浏览器逐步渲染，白屏必红（npm run smoke）
     │   ├── extract-narrations.ts   # 扫所有 narrations.ts → audio-segments.json
     │   ├── synthesize-audio.sh     # provider-agnostic runner（循环 segments）
     │   ├── audio-report.mjs        # 每章时长 + 偏长/偏短的步（npm run audio:report）
@@ -139,11 +141,19 @@ Plan / 第 1 章验收 / Checkpoint Audio / 主题与稿子取舍）上。
    用这三个工具，**不要**用 shell 的 `cat` / `grep` / `awk`。
 2. **机器可判定的结构不变量 → 具名 npm 脚本**（已被 allowlist 覆盖，
    跨项目 / 章节 / 端口永久免确认）：
-   - `npm run layout:check` —— 已覆盖 **narrations.ts 的 step 数 ↔ 章节代码
-     `if (step===N)` 最大 N + 1**（rule 名 `step-count-mismatch`）↔
-     `data-composition` 合法性 ↔ 主题色 / 字 token。**这条不变量不要再
-     手搓 `node -e` 验**，直接跑它。
-   - `npm run extract-narrations`、`npx tsc --noEmit` 同理。
+   - `npm run verify` —— **一条命令跑完下面三道闸**，完工自检默认用它。
+   - `npm run layout:check` —— 静态层。已覆盖 **narrations.ts 的 step 数 ↔
+     章节代码 `if (step===N)` 最大 N + 1**（rule 名 `step-count-mismatch`）↔
+     `data-composition` 合法性 ↔ 主题色 / 字 token ↔ **中文里的裸直引号**
+     （`broken-string-literal`）。**这些不变量不要再手搓 `node -e` 验**。
+   - `npm run build`（= `tsc -b && vite build`）—— 类型 + **解析**错误。
+     **别用 `npx tsc --noEmit` 代替**：让页面白屏的是打包那一侧，两者
+     判定不一定一致。
+   - `npm run smoke` —— **真浏览器跑一遍，白屏 / 未捕获异常必红**。
+     `layout:check` 是纯文本分析、从不加载页面，所以它全绿**不代表应用能跑**
+     （见 [`references/VISUAL-QA.md`](references/VISUAL-QA.md) §2.5 的事故）。
+     没装 playwright 会跳过并 exit 0 —— **跳过必须如实汇报，不许说成通过**。
+   - `npm run extract-narrations` 同理。
 3. **需要判气质 / 反 AI 味 / 双源原则 → reviewer agent**（Agent Teams /
    subagent）：它用 Read 工具读文件 = 零确认，且视角比自检独立。
 
@@ -153,6 +163,12 @@ npm 脚本**（写进项目 `scripts/` + `package.json`），一次性消灭整�
 
 **铁律**：拿到结论后**先按 fail 项把产出改完**，再向用户汇报"做完了
 + 自检结论 + 改了什么"。**直接拿原始结论汇报但不修复 = 违规**。
+
+**第二条铁律 —— agent 的 self-report 不是通过依据**：subagent / reviewer
+说"全部 pass"**不能**作为完成的证据，只有**主线程自己跑出来的命令输出**
+算数。这不是不信任，是有事故记录：并行 fan-out 那一轮多个 agent 自报
+"all pass"，实际留下了引号 bug、缺 `max-width`、`const` 夹断 step 计数。
+汇报前**自己跑一次 `npm run verify`**。
 
 ---
 
@@ -170,7 +186,7 @@ Phase 2.4 的"实现单章"会重复 N 次 —— 每次都要回看核心约束
 | Phase 3 音频合成 | `references/AUDIO.md`（含 narrations.ts → segments.json → 任意 provider 流程，内置 voxcpm / minimax / openai） | `templates/scripts/tts-providers/README.md`（换 provider / 自带 TTS 时） |
 | Phase 4 录屏 + 后期 | `references/RECORDING.md`（含 `?auto=1` 自动录屏） | —— |
 | 选 / 造 / 切主题 | —— | `references/THEMES.md` |
-| 视觉 QA / 调试 | `references/VISUAL-QA.md`（`npm run layout:check` + `?layout=1` overlay） | —— |
+| 视觉 QA / 调试 | `references/VISUAL-QA.md`（`npm run verify` = layout:check + build + smoke；再开 `?layout=1` overlay） | —— |
 
 > **`CHAPTER-CRAFT.md` 是写章节的单一入口**。十条原则 / 开工 self-prompting /
 > 决策树 / 反 AI 味反模式 / 完工自检全部并入这一份，**每章都从它开始**。
@@ -390,8 +406,7 @@ rm -rf presentation/src/chapters/01-example
 
 #### 模式 C · 第 1 章后并行开发（subagent）
 
-用 subagent 把第 2~N 章并行做完，最大并行数由用户控制（"一次 4 章"
-/ "一次 2 章"）。**最快，但风格各章会有差异** —— 这是预期，因为：
+用 subagent 把第 2~N 章并行做完。**最快，但风格各章会有差异** —— 这是预期，因为：
 
 1. 每个 subagent 看不到别的 subagent 产出，无法机械对齐
 2. 章节代码物理分离（每章一个文件夹 / 自己的 CSS 前缀），不会互相
@@ -399,6 +414,21 @@ rm -rf presentation/src/chapters/01-example
 3. 主题 token 兜底视觉统一（颜色 / 字体 / hero 数字 / 卡片 / 分割线
    性格 / 装饰），气质不会跑偏
 4. **风格不一致 = 人手写视频的呼吸感**（多 voice / 多视角）
+
+**并发上限：一次最多 3~4 章**（用户可以往下调，**不要往上加**）。
+一次派 13 个 chapter-builder 触发过账号级速率限制，4 个 agent 中途挂掉，
+留下只有 2~3 个文件的残缺章节 —— 而它们的 self-report 还写着 "all pass"。
+章多就分批：做完一批、扫一遍完整性、再派下一批。
+
+**每批 fan-out 收口后必须做完整性扫描**（主线程自己做，不看 self-report）：
+
+1. **文件齐不齐** —— 每章 `src/chapters/<NN>-<id>/` 下应有
+   `<Chapter>.tsx` + `<Chapter>.css` + `narrations.ts`（论文章节多一个
+   `evidence.ts`）。用 Glob 工具列一遍，缺文件 = 那个 agent 中途挂了，
+   **重派该章**，别手工补半个。
+2. **`npm run verify`** —— layout:check + build + smoke 一次跑完。
+   这一步会把残缺章节、引号 bug、step 数错位、白屏全部照出来。
+3. **fail 全部修完**再向用户汇报。
 
 并行 subagent 的 prompt 必须包含：
 
@@ -409,7 +439,8 @@ rm -rf presentation/src/chapters/01-example
   即可，动画 / 时长 / 字号 / emoji 由 chapter agent 自由决定）
 - **第 1 章代码作为"代码风格"参考**（不是"视觉抄袭对象"）
 - 硬规则：每章独立 CSS 前缀（`.cd-` / `.mg-` / `.pm-` / ...）；
-  不修改 `chapters.ts`；完工跑 `npx tsc --noEmit`
+  不修改 `chapters.ts`；完工跑 `npm run verify`；**中文字符串一律用全角
+  `“ ”`，禁止 ASCII 直引号**（直引号会让整个文件解析失败 → 整站白屏）
 
 **重要**：无论选哪种模式，**用户随时可以中途切换模式**。第 2 章 OK
 后用户说"剩下的并行" / "剩下的逐章" 都行。
@@ -443,11 +474,15 @@ rm -rf presentation/src/chapters/01-example
   （`src/components/Evidence.tsx`，脚手架自带），证据数据放本章
   `evidence.ts`——**不要塞进 narrations.ts**，那是音频管线的真相源，
   `extract-narrations.ts` 遇到非字符串会直接抛错
-- **完工自检分三层**（详见 [`references/VISUAL-QA.md`](references/VISUAL-QA.md)）：
+- **完工自检分四层**（详见 [`references/VISUAL-QA.md`](references/VISUAL-QA.md)）：
   1. **结构层**：`npm run layout:check` 跑 `inspect-layout.mjs`
-  2. **视觉层**：开 `?layout=1` debug overlay 逐 step 走英雄帧
-  3. **气质层**：CHAPTER-CRAFT.md Part 5 + VISUAL-DIRECTION.md §5
+  2. **运行层**：`npm run build` + `npm run smoke` —— 应用真的能跑吗、每步
+     真的画出东西了吗。**第 1、3 层全绿而整站白屏是发生过的**（VISUAL-QA §2.5）
+  3. **视觉层**：开 `?layout=1` debug overlay 逐 step 走英雄帧
+  4. **气质层**：CHAPTER-CRAFT.md Part 5 + VISUAL-DIRECTION.md §5
      + MOTION-BLUEPRINTS.md 选不同蓝图
+
+  前两层一条命令跑完：**`npm run verify`**
 
 ### 2.5 大改后 bump STORAGE_KEY
 
@@ -568,7 +603,7 @@ Part 8「常见反馈速查」。**关键**：先定位是哪一层（节奏 / �
 | [`references/CHAPTER-CRAFT.md`](references/CHAPTER-CRAFT.md) | **Phase 2.4 每章单一必读入口** | Part 0 十条原则 / ★ 静态布局阶段 / Part 1 开工 5 问 / Part 2 关系→动作决策树 / Part 3 视觉工具箱 / Part 4 时长 / Part 5 反 AI 味反模式 / Part 6 代码硬规则 / Part 7 完工自检 / Part 8 反馈速查 |
 | [`references/VISUAL-DIRECTION.md`](references/VISUAL-DIRECTION.md) | **Phase 2.4 ★ 静态布局阶段** | 8 个构图（centered-hero / asymmetric-60-40 / split-screen / rule-of-thirds / full-width-strip / layered-depth / triptych / diagram-canvas）+ 视觉角色 / 英雄帧契约 / 密度 tokens / 反 AI 味完整清单 |
 | [`references/MOTION-BLUEPRINTS.md`](references/MOTION-BLUEPRINTS.md) | **Phase 2.4 选动画节拍** | 论文 / 教学常用 10 种蓝图（process-build / compare-reveal / ablation-remove / formula-assemble / data-countup / focus-drilldown / failure-inspect / token-transform / evidence-stack / boundary-contract） |
-| [`references/VISUAL-QA.md`](references/VISUAL-QA.md) | **Phase 2.4 完工自检** | 三层检查：`npm run layout:check` 机器检查 + `?layout=1` debug overlay 人工检查 + 修复 catalog |
+| [`references/VISUAL-QA.md`](references/VISUAL-QA.md) | **Phase 2.4 完工自检** | 三层检查：`npm run layout:check` 静态检查 + **`npm run build` / `npm run smoke` 运行检查（§2.5）** + `?layout=1` overlay 人工检查 + 修复 catalog |
 | [`references/PAPER-INTERPRETATION.md`](references/PAPER-INTERPRETATION.md) | **论文输入时必读**（叠加在 SKILL + CHAPTER-CRAFT 之上） | paper-digest（含**前置知识台账**）/ 论文类型叙事弧 / **§2.5 概念解释层（骨架照抄论文·血肉自己长，四拍 + 断言测试）** / 证据层（事实·证据·推断·背景）/ 内容→动画→布局 map / 公式（KaTeX `--math`）/ 图表复用 / 论文级验收 |
 | [`references/EXAMPLES/`](references/EXAMPLES/) | **可选** —— 看结构 | 章节结构示意（hook / list-reveal / case-tech-review / **paper-*** 4 个论文 anchor）；**不是抄袭模板** |
 | [`references/THEMES.md`](references/THEMES.md) | 选 / 造 / 切主题时 | 完整 token 契约 + 内置主题清单 + 创作流程 |

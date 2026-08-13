@@ -578,6 +578,26 @@ node <skill>/scripts/fetch-paper-figures.mjs 1706.03762v7 --out ./paper-figures
 清单（含 caption）。把 `figures.md` 的表格贴进 `paper-digest.md` §8，
 逐行填「可用」和「复用决策」。
 
+网络调用都带硬超时（默认 20s，`--timeout <秒>` 可调），跑之前先探一次连通性，
+连不上就在几秒内失败并打出下面的离线路线 —— **不会挂死**。
+
+**沙箱 / 容器里网络不通时 —— 走「另存网页」，别手工映射文件名**：
+
+```bash
+# 1. 在有网的浏览器里打开 https://arxiv.org/html/<id>
+#    另存为「网页，全部」→ 得到 paper.html + paper_files/
+# 2. 把两者拷进来，喂给同一个脚本（--base 可以不给）
+node <skill>/scripts/fetch-paper-figures.mjs ./paper.html --out ./paper-figures
+```
+
+图片直接从 `paper_files/` 拷，全程零网络，而且**图号 ↔ 文件名的映射照常由
+`<figcaption>` 里的 "Figure N" 生成**。
+
+> ⚠️ **不要跳过脚本直接从 `_files/` 里挑图**。那个目录里的文件名是构建产物
+> （`summary-v2.svg` / `summary_vs_thinking.svg` 这种），**和图号没有任何关系**。
+> 曾经靠文件名猜，把 Fig 8 和 Fig 40 弄反，最后是逐张渲染肉眼比对才发现。
+> 图号只有一个可信来源：caption。上屏前扫一眼 `figures.md` 的表确认对得上。
+
 选好要用的图之后：
 
 ```bash

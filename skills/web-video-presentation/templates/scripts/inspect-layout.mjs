@@ -3,9 +3,13 @@
  * inspect-layout.mjs — static layout QA for web-video-presentation chapters.
  *
  * Scans every chapter folder under src/chapters/, parses the TSX + CSS,
- * and emits a JSON report + console summary. No puppeteer / no DOM — pure
+ * and emits a JSON report + console summary. No browser / no DOM — pure
  * source analysis. This is fast, zero-dependency, and catches the most
  * common visual QA issues BEFORE you open a browser.
+ *
+ * Because nothing here renders, a fully green run does NOT mean the app runs:
+ * scripts/smoke-render.mjs (`npm run smoke`) is the complementary gate that
+ * actually loads the page and fails on a blank screen. Run both.
  *
  * Checks (FAIL = exit 1):
  *   - chapter has a narrations.ts with correct step count vs. the highest
@@ -14,6 +18,9 @@
  *       `if (step === N)`, `step >= N`, `step > N`, `step <= N`, `step < N`,
  *       JSX inline `{step >= N && ...}` / ternaries, and `switch (step)`
  *       + `case N:`.
+ *   - narrations.ts / evidence.ts: no string literal that ends mid-Chinese
+ *     (an ASCII straight quote in CJK prose — a parse error that renders the
+ *     whole app blank while still serving HTTP 200)
  *   - chapter scene root has data-composition="<one-of-8>"
  *   - data-composition values within a chapter: no consecutive run > 2
  *     (UNLESS chapter root has data-composition-stable="true")
@@ -24,6 +31,8 @@
  *   - chapter CSS: any h1/h2/h3 with font-size ≥ 60px and no max-width (FAIL)
  *
  * Checks (WARN = exit 0):
+ *   - narrations.ts / evidence.ts: ASCII straight quotes wrapping Chinese text
+ *     (bad typography, and one edit away from the FAIL above — use “ ”)
  *   - chapter uses only 1 unique composition (consider varying)
  *   - chapter CSS uses a non-neutral rgb()/hsl() literal outside a var()
  *     fallback (suggest a token or color-mix())
@@ -209,21 +218,138 @@ function stripJsComments(src) {
 }
 
 /**
- * Locate the LAST `if (step === N)` statement for a given N, tolerating any
- * whitespace style (`if(step===2)`, `if ( step === 2 )`, `==` as well as
- * `===`). Returns its byte offset, or -1.
+ * Locate the LAST `if (…)` statement whose CONDITION gates on step N.
  *
- * The old code matched the reference with a lax regex but then re-located it
- * with an exact literal `lastIndexOf("if (step === N)")` — so a chapter
- * written as `if(step===2)` silently skipped the implicit-final-step
- * compensation below. Both now go through the same lenient matcher.
+ * Matching the whole header as one regex (`if\s*\(\s*step\s*===?\s*N\s*\)`)
+ * only ever recognised a bare single-comparison condition. Real chapters
+ * routinely write compound gates, and each of these silently lost the
+ * implicit-final-step bump and got reported as one step short:
+ *
+ *     if (step === 6 || step === 7) { … }
+ *     if (step >= 1 && step <= 4)   { … }
+ *     if (step === 4 && !collapsed) { … }
+ *
+ * So: find each `if`, brace-match its condition, and ask whether that
+ * condition mentions N in a step comparison at all.
  */
-function lastIfStepEqualsIndex(src, n) {
-  const re = new RegExp(`if\\s*\\(\\s*step\\s*===?\\s*${n}\\s*\\)`, "g");
-  let last = -1;
+function lastIfGatingOn(src, n) {
+  const re = /\bif\s*\(/g;
+  const mentions = new RegExp(`\\bstep\\s*(?:===|==|>=|<=|>|<)\\s*${n}\\b|\\b${n}\\s*(?:===|==|>=|<=|>|<)\\s*step\\b`);
+  let last = null;
   let m;
-  while ((m = re.exec(src)) !== null) last = m.index;
+  while ((m = re.exec(src)) !== null) {
+    const open = m.index + m[0].length - 1; // the "(" itself
+    const close = skipBracketed(src, open);
+    if (mentions.test(src.slice(open, close))) last = { index: m.index, headerEnd: close };
+    re.lastIndex = m.index + 2;
+  }
   return last;
+}
+
+// ─── Tiny source scanner (shared by the terminal-return detector) ───
+const BRACKET_PAIRS = { "{": "}", "(": ")", "[": "]" };
+
+/** Advance past the string/template literal that starts at `i`. */
+function skipStringLiteral(src, i) {
+  const quote = src[i];
+  i++;
+  while (i < src.length) {
+    const c = src[i];
+    if (c === "\\") { i += 2; continue; }
+    if (c === quote) return i + 1;
+    // ' and " cannot span lines — bail so a stray apostrophe in prose can't
+    // swallow the rest of the file.
+    if (quote !== "`" && c === "\n") return i;
+    i++;
+  }
+  return i;
+}
+
+/** Bracket-match from the opener at `i`; returns the index just past its closer. */
+function skipBracketed(src, i) {
+  const stack = [BRACKET_PAIRS[src[i]]];
+  i++;
+  while (i < src.length && stack.length > 0) {
+    const c = src[i];
+    if (c === '"' || c === "'" || c === "`") { i = skipStringLiteral(src, i); continue; }
+    if (BRACKET_PAIRS[c]) { stack.push(BRACKET_PAIRS[c]); i++; continue; }
+    if (c === stack[stack.length - 1]) { stack.pop(); i++; continue; }
+    i++;
+  }
+  return i;
+}
+
+/**
+ * Index just past the statement beginning at `i` — either a `{ … }` block or a
+ * single `… ;` statement. Used to step over the last step-gated branch.
+ */
+function endOfStatement(src, i) {
+  while (i < src.length && /\s/.test(src[i])) i++;
+  if (i >= src.length) return i;
+  if (src[i] === "{") return skipBracketed(src, i);
+  while (i < src.length) {
+    const c = src[i];
+    if (c === '"' || c === "'" || c === "`") { i = skipStringLiteral(src, i); continue; }
+    if (BRACKET_PAIRS[c]) { i = skipBracketed(src, i); continue; }
+    if (c === ";") return i + 1;
+    if (c === "}") return i; // enclosing block closed without a trailing `;`
+    i++;
+  }
+  return i;
+}
+
+/**
+ * True when the component still falls through to a `return` that RENDERS
+ * something after its last step-gated branch — the "implicit final step".
+ *
+ * The old test was `/^\s*return\b/.test(tail)`: the terminal `return` had to
+ * sit immediately after the last branch's closing brace. Two shapes defeated
+ * it, and both showed up in real chapters written by different authors:
+ *
+ *     if (step === 4) { … }
+ *     const rows = DATA.slice(0, 3);   // ← anything here and the bump was lost
+ *     return <Final rows={rows} />;
+ *
+ *     if (step === 4) return <Four />; // ← brace-less: the brace matcher that
+ *     return <Final />;                //   located the branch end gave up
+ *
+ * Both reported a bogus `step-count-mismatch`. This scanner instead walks
+ * forward from the end of the branch, skipping whole bracketed groups (so a
+ * `return` nested inside a helper or a non-step `if` block is never mistaken
+ * for the terminal one) until it finds a `return` at the component's own
+ * level, or leaves the component body.
+ *
+ * `return null` / `return undefined` do NOT count: they render nothing, so
+ * they are a defensive fallback rather than a step.
+ */
+function hasImplicitTerminalReturn(src, from) {
+  let i = from;
+  while (i < src.length) {
+    const c = src[i];
+    if (/\s/.test(c)) { i++; continue; }
+    if (c === '"' || c === "'" || c === "`") { i = skipStringLiteral(src, i); continue; }
+    if (c === "}") return false; // walked out of the component body
+    if (/[A-Za-z_$]/.test(c)) {
+      const word = /^[A-Za-z_$][\w$]*/.exec(src.slice(i))[0];
+      if (word === "return") {
+        return !/^\s*(null|undefined)\s*[;}]/.test(src.slice(i + word.length));
+      }
+      if (word === "else") {
+        // Step INTO the else-branch — its body is the fallthrough we want.
+        i += word.length;
+        while (i < src.length && /\s/.test(src[i])) i++;
+        if (src[i] === "{") i++;
+        continue;
+      }
+      i += word.length;
+      continue;
+    }
+    // Any bracketed group (helper bodies, non-step `if` blocks, call args,
+    // JSX expression containers) is skipped whole.
+    if (BRACKET_PAIRS[c]) { i = skipBracketed(src, i); continue; }
+    i++;
+  }
+  return false;
 }
 
 /**
@@ -266,9 +392,10 @@ function switchStepCases(src) {
  *   switch (step) { case N: … }    // switch dispatch
  *
  * Returns the maximum N encountered, or -1 if the source never mentions step.
- * If a terminal `return` exists after the last explicit `if (step === N)`
- * branch (the "fallthrough default" pattern), bump by 1 for the implicit
- * final step.
+ * If a rendering terminal `return` exists after the last explicit
+ * `if (step === N)` branch (the "fallthrough default" pattern), bump by 1 for
+ * the implicit final step — see hasImplicitTerminalReturn for the shapes that
+ * counts, and the two that used to be missed.
  */
 function maxStepRef(jsx) {
   const stripped = stripJsComments(jsx);
@@ -287,33 +414,14 @@ function maxStepRef(jsx) {
   // `switch (step) { case N: … }`
   for (const n of switchStepCases(stripped)) bump(n);
 
-  // Detect implicit-terminal-return pattern: a top-level `return ...;`
-  // at the function's outermost scope AFTER all `if (step === N)`
-  // branches. This indicates the chapter handles one extra step
-  // without an explicit if check.
+  // Detect implicit-terminal-return pattern: a rendering `return ...;` at the
+  // component's own scope AFTER the last `if (step === N)` branch. That means
+  // the chapter serves one extra step without an explicit if check.
   if (max >= 0) {
-    const lastIfIdx = lastIfStepEqualsIndex(stripped, max);
-    if (lastIfIdx !== -1) {
-      const after = stripped.slice(lastIfIdx);
-      // Find the closing brace of the if-block.
-      let depth = 0;
-      let sawOpen = false;
-      let endOfIf = -1;
-      for (let i = 0; i < after.length; i++) {
-        if (after[i] === "{") { depth++; sawOpen = true; }
-        else if (after[i] === "}") {
-          depth--;
-          if (sawOpen && depth === 0) { endOfIf = lastIfIdx + i; break; }
-        }
-      }
-      if (endOfIf !== -1) {
-        const tail = stripped.slice(endOfIf + 1);
-        // If the tail (after stripping whitespace) starts with `return`
-        // (i.e. no more if statements, no more branches), bump count.
-        if (/^\s*return\b/.test(tail)) {
-          return max + 1;
-        }
-      }
+    const lastIf = lastIfGatingOn(stripped, max);
+    if (lastIf) {
+      const branchEnd = endOfStatement(stripped, lastIf.headerEnd);
+      if (hasImplicitTerminalReturn(stripped, branchEnd)) return max + 1;
     }
   }
 
@@ -580,6 +688,61 @@ function countNarrationEntries(src) {
   return entryCount;
 }
 
+const CJK = /[　-〿一-鿿＀-￯]/;
+
+/**
+ * Catch the single most expensive typo in this codebase: an ASCII straight
+ * quote inside Chinese prose.
+ *
+ *     "…所谓的"思维链压力"…"
+ *
+ * JS reads that as string · identifier · string, which is a syntax error —
+ * esbuild's dependency scan dies on it, react-dom never gets pre-bundled, and
+ * the whole app renders blank while still serving HTTP 200. The tell is
+ * structural and cheap to spot: a string literal that ends and is immediately
+ * followed by a CJK character or another quote never means what its author
+ * intended.
+ *
+ * Returns { broken, ascii }:
+ *   broken — the parse-breaking shape above (FAIL)
+ *   ascii  — a straight-quote PAIR wrapping Chinese text (WARN). Legal today,
+ *            but it is bad Chinese typography AND one edit away from `broken`.
+ *            Use the full-width pair “ ” instead.
+ *
+ * The warn requires the wrapped run to contain CJK on purpose: quoting an
+ * English phrase with ASCII quotes inside a Chinese sentence — 原文 'We
+ * suspect'：… — is correct typography, and flagging it was pure noise.
+ */
+function findQuoteHazards(src) {
+  const broken = [];
+  const ascii = [];
+  let i = 0;
+  while (i < src.length) {
+    const ch = src[i];
+    if (ch === "/" && src[i + 1] === "/") { while (i < src.length && src[i] !== "\n") i++; continue; }
+    if (ch === "/" && src[i + 1] === "*") { i = src.indexOf("*/", i + 2) + 2 || src.length; continue; }
+    if (ch !== '"' && ch !== "'" && ch !== "`") { i++; continue; }
+
+    const start = i;
+    i = skipStringLiteral(src, i);
+    const body = src.slice(start + 1, Math.max(start + 1, i - 1));
+    const line = src.slice(0, start).split("\n").length;
+    const excerpt = body.length > 34 ? body.slice(0, 34) + "…" : body;
+
+    const wrapsCjk = [...body.matchAll(/(["'])([^"']{1,40}?)\1/g)].find((p) => CJK.test(p[2]));
+    if (wrapsCjk) {
+      ascii.push({ line, excerpt, quoted: wrapsCjk[0] });
+    }
+    // What follows the closing quote?
+    let j = i;
+    while (j < src.length && /[ \t]/.test(src[j])) j++;
+    if (j < src.length && (CJK.test(src[j]) || src[j] === '"' || src[j] === "'")) {
+      broken.push({ line, excerpt, next: src.slice(j, j + 8) });
+    }
+  }
+  return { broken, ascii };
+}
+
 /** Rough text-node density: count JSX text fragments inside return tree. */
 function roughTextNodeCount(jsx) {
   // Strip comments (string-aware — a URL in narration text is not a comment),
@@ -685,6 +848,33 @@ function analyzeChapter(folderPath) {
       });
     } else {
       checks.push({ level: "pass", rule: "step-count", detail: `${narLen} steps aligned` });
+    }
+  }
+
+  // 1b. Quote hazards in the text-bearing sidecars — the two pure-data files
+  // where the straight-quote parse error actually happens.
+  //
+  // The chapter TSX is deliberately NOT scanned. Inside JSX, `<p>右上三角是"看
+  // 未来"，…</p>` is ordinary text and those quotes are legal characters, not
+  // string delimiters — scanning it flagged 7 healthy chapters in a project
+  // that builds and renders fine.
+  for (const f of ["narrations.ts", "evidence.ts"]) {
+    const p = path.join(folderPath, f);
+    if (!fs.existsSync(p)) continue;
+    const { broken, ascii } = findQuoteHazards(fs.readFileSync(p, "utf8"));
+    if (broken.length > 0) {
+      checks.push({
+        level: "fail",
+        rule: "broken-string-literal",
+        detail: `${f} 第 ${broken.map((b) => b.line).join(" / ")} 行：字符串在中文中间提前结束 —— 例「…${broken[0].excerpt}」后面紧跟「${broken[0].next.trim()}」。这是中文里用了 ASCII 直引号，会让整个文件解析失败 → 白屏。改用全角 “ ”`,
+      });
+    }
+    if (ascii.length > 0) {
+      checks.push({
+        level: "warn",
+        rule: "ascii-quote-in-cjk",
+        detail: `${f} 第 ${ascii.slice(0, 3).map((a) => a.line).join(" / ")} 行用 ASCII 直引号包住了中文（${ascii[0].quoted}）—— 中文排版应当用全角 “ ”，且直引号离「解析失败 → 白屏」只差一次改写`,
+      });
     }
   }
 

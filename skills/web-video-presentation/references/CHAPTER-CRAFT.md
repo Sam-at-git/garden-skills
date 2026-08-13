@@ -251,21 +251,29 @@ emoji 当图标 / 假数据假 logo / 整章同一种入场动画 / 每屏右下
 > **拿到自检结论后**：先按 fail 项**改完代码**，然后再向用户汇报"做完
 > 了 + 自检结论 + 改了什么"。**直接拿原始结论汇报但不修复 = 违规**。
 >
-> 🔧 **验证用工具，别手搓 shell**：结构核查走 `npm run layout:check` +
-> `npx tsc --noEmit`（已覆盖下方多数 checkbox，含 step 数一致性）；读 /
-> 搜文件用 Read / Grep 工具；气质判断开 reviewer agent。**禁止**用
-> `python3 -c` / `node -e` / `awk` 现场拼验证——每条都是一次人干预确认
-> （详见 SKILL.md「验证通道」）。
+> 🔧 **验证用工具，别手搓 shell**：结构核查走 `npm run verify`
+> （= `layout:check` + `build` + `smoke`，已覆盖下方多数 checkbox，含 step
+> 数一致性）；读 / 搜文件用 Read / Grep 工具；气质判断开 reviewer agent。
+> **禁止**用 `python3 -c` / `node -e` / `awk` 现场拼验证——每条都是一次人
+> 干预确认（详见 SKILL.md「验证通道」）。
 
-完工自检分**三层**（**全部过 = 可以汇报完成**）：
+完工自检分**四层**（**全部过 = 可以汇报完成**）：
 
 1. **结构层**（机器）：`npm run layout:check` —— 跑
    [`VISUAL-QA.md`](VISUAL-QA.md) §2 的 `inspect-layout.mjs`。
    fail 项必须修完；warn 项至少人工确认。
-2. **视觉层**（人工）：开 `?layout=1` debug overlay，逐 step 走一遍
+2. **运行层**（机器，**新增·不可跳过**）：`npm run build` 然后
+   `npm run smoke`。前者是 `tsc -b && vite build`，把类型错误和**解析错误**
+   一次报出来；后者真的用浏览器把每一步走一遍，白屏 / 未捕获异常直接红。
+   —— **第 1、3 层全绿而应用白屏是真实发生过的事故**：`layout:check` 是纯
+   文本分析、`?layout=1` 要人眼，两者都不会加载页面。详见
+   [`VISUAL-QA.md`](VISUAL-QA.md) §2.5。
+   > `npm run smoke` 在没装 playwright 时会**跳过并 exit 0**。跳过了就必须
+   > 在汇报里写「smoke 已跳过」，**不许说成通过**。
+3. **视觉层**（人工）：开 `?layout=1` debug overlay，逐 step 走一遍
    静态英雄帧（[`VISUAL-QA.md`](VISUAL-QA.md) §3）。每步确认
    primary ≥ 40%、无溢出、留白成方向、至少两种层级手段。
-3. **气质层**（人工）：下方逐项清单 + [`VISUAL-DIRECTION.md`](VISUAL-DIRECTION.md)
+4. **气质层**（人工）：下方逐项清单 + [`VISUAL-DIRECTION.md`](VISUAL-DIRECTION.md)
    §5 反 AI 味清单 + [`MOTION-BLUEPRINTS.md`](MOTION-BLUEPRINTS.md) 选不同蓝图。
 
 写完一章 + 在浏览器点完一遍后逐项过：
@@ -289,7 +297,15 @@ emoji 当图标 / 假数据假 logo / 整章同一种入场动画 / 每屏右下
 - [ ] 章节交付时**主动告诉用户**："本章还缺这些素材"
 - [ ] 禁止出现小号字体，大量纯文字（出现后必须回去改）
 - [ ] 禁止出现任何形式的页眉页脚，仅展示关键内容（出现后必须回去改）
-- [ ] **`npx tsc --noEmit` 通过** —— 不通过禁止汇报"做完了"
+- [ ] **`npm run build` 通过**（= `tsc -b && vite build`）—— 不通过禁止汇报
+      "做完了"。**别只跑 `tsc --noEmit`**：它和打包器对"字符串里的裸引号"
+      这类问题判定不一定一致，而真正让页面白屏的是打包这一侧
+- [ ] **`npm run smoke` 通过**（浏览器逐步走一遍，白屏 / 未捕获异常必红）
+      —— 没装 playwright 会跳过，跳过就**如实写「smoke 已跳过」**
+- [ ] **中文字符串里不用 ASCII 直引号**，一律全角 `“ ”` —— 直引号在
+      `narrations.ts` / `evidence.ts` 里会让整个文件解析失败 → 整站白屏，
+      且 HTTP 仍然 200，排查链条极长。已被 `layout:check` 的
+      `broken-string-literal`（fail）/ `ascii-quote-in-cjk`（warn）覆盖
 - [ ] 章节代码物理隔离：独立 CSS 类前缀（`.cd-` / `.mg-` / ...），
       未跨章 import，未修改 `chapters.ts` 之外的共享文件
 - [ ] **`narrations.ts` 存在**且 `narrations.length` === 章节代码里

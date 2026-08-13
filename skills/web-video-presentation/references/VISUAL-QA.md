@@ -1,14 +1,19 @@
 # 视觉 QA（Visual Quality Assurance）
 
-每章完工前、合成音频前、录屏前的**视觉检查机制**。两层：
+每章完工前、合成音频前、录屏前的**视觉检查机制**。三层：
 
-1. **机器检查** —— `npm run layout:check` 跑 `inspect-layout.mjs`，
+1. **结构检查（机器·静态）** —— `npm run layout:check` 跑 `inspect-layout.mjs`，
    在源码层发现常见翻车（缺 `data-composition`、字号太小、长标题
    无 max-width、相邻 step 重复构图、字号超过安全密度等）
-2. **人工检查** —— 开 `?layout=1` debug overlay，逐 step 静态走一遍
+2. **运行检查（机器·真浏览器）** —— `npm run build` + `npm run smoke`，
+   确认**应用真的能跑、每一步真的画出了东西**（§2.5）
+3. **人工检查** —— 开 `?layout=1` debug overlay，逐 step 静态走一遍
    英雄帧，截图存档
 
-两层缺一不可 —— 机器检查覆盖结构性问题，人工检查覆盖视觉气质。
+三层缺一不可。**第 2 层不是冗余** —— 第 1 层从不加载页面，第 3 层要人眼，
+中间那道「应用是不是白屏」的缺口只有它能堵（§2.5 有事故经过）。
+
+> 三条一次跑完：`npm run verify`
 
 ---
 
@@ -16,9 +21,10 @@
 
 | 阶段 | 跑什么 |
 |---|---|
-| 章节实现完成 | `npm run layout:check`（机器） + `?layout=1` 走一遍（人工） |
+| 章节实现完成 | `npm run verify`（= layout:check + build + smoke） + `?layout=1` 走一遍（人工） |
+| 并行 fan-out 收口后 | **`npm run verify` 必跑**，且逐章确认文件齐全 —— 不信 subagent 的 self-report（SKILL.md §2.3） |
 | 所有章节完成，进 Checkpoint Audio | 全章走一遍 `?layout=1` + 截 contact sheet |
-| 音频合成完成，录屏前 | 复跑一次 `npm run layout:check`（防止合成脚本改动章节 CSS） |
+| 音频合成完成，录屏前 | 复跑一次 `npm run verify`（防止合成脚本改动章节 CSS） |
 | 录屏前 5 分钟 | 抽查 3~5 个 step 的 `?layout=1` 截图，确认无变化 |
 
 ---
@@ -30,7 +36,17 @@ playwright**（保持零依赖、易集成）。覆盖以下检查：
 
 ### 2.1 必查项（fail = 阻止后续流程）
 
+- **`narrations.ts` / `evidence.ts` 里不能有"中途断掉的字符串"**
+  （rule `broken-string-literal`）—— 中文正文里写 ASCII 直引号，
+  `"…所谓的"思维链压力"…"` 会被读成 字符串·标识符·字符串，
+  **整个文件解析失败 → 整站白屏，而 HTTP 依然返回 200**。改用全角 `“ ”`
 - **每章必须有 `narrations.ts`** 且数组长度与章节 TSX 中最大 `step === N` + 1 一致
+  - **不需要为这条规则改写代码**。判定容忍：最后一个 `if` 不带花括号、
+    终结 `return` 前面夹了 `const` / 其它语句、`if` 顺序打乱、`else` 分支
+    承担最后一步、以及复合条件
+    （`if (step === 6 || step === 7)` / `if (step >= 1 && step <= 4)` /
+    `if (step === 4 && !collapsed)`）。
+    **`return null` 不算一步**（它什么都不渲染，是防御性兜底）
 - **每章 TSX 根元素必须有 `data-composition` 属性**，值在 8 个合法
   构图之一（`centered-hero` / `asymmetric-60-40` / `split-screen` /
   `rule-of-thirds` / `full-width-strip` / `layered-depth` / `triptych` /
@@ -50,6 +66,9 @@ playwright**（保持零依赖、易集成）。覆盖以下检查：
 
 ### 2.2 建议项（warn = 不阻止，但人工复查）
 
+- **中文不要用 ASCII 直引号包**（rule `ascii-quote-in-cjk`）—— `"直引号"`
+  改成 `“全角”`。现在能跑，但它离上面那条 fail 只差一次改写。
+  （用 ASCII 引号包**英文**短语不报，那是正确排版）
 - **每章应该使用至少 3 种不同构图** —— 只用 1~2 种 = warn
 - **每个 step 的文本节点数不应过多** —— 同一 scene 内 text 节点 >
   40 = warn（信息密度过高，建议拆分 step 或减装饰文字）
@@ -86,6 +105,59 @@ npm run layout:check -- --json report.json # 写到你指定的路径（相对�
 ```
 
 `fail` 数 > 0 → process.exit(1)，CI 会红。
+
+---
+
+## 2.5 `npm run build` + `npm run smoke` —— 运行检查
+
+### 为什么必须有这一层（真实事故）
+
+某章 `narrations.ts` 的中文里混进了 ASCII 直引号。当时的验证组合是
+`layout:check` + `tsc --noEmit`，**两个都是绿的**。但 esbuild 的依赖扫描在
+这个解析错误上挂掉 → `react-dom` 没有被预打包 → **每一页都是空白**，而
+HTTP 照常 200。排查从"截图全是 8.5KB 空白"一路追到一句引号。
+
+根因不是某个规则漏了，是**整条流水线从来没有真的渲染过页面**：
+`layout:check` 是纯文本分析（不加载 DOM），`?layout=1` 要人眼。
+
+### 两道闸，按顺序跑
+
+```bash
+npm run build     # tsc -b && vite build —— 不用浏览器，直接指出出问题的文件和行号
+npm run smoke     # 真浏览器逐步走一遍，白屏 / 未捕获异常 = 红
+```
+
+- **`build` 先跑**：它最便宜，而且解析错误 / 类型错误会带着行号一次报清。
+  **别用 `tsc --noEmit` 代替**——真正让页面白屏的是打包那一侧。
+- **`smoke` 后跑**：它抓的是 build 抓不到的东西——运行时异常、某一步渲染
+  成空场景、console error。
+
+### `npm run smoke` 判什么
+
+| 级别 | 判定 |
+|---|---|
+| **fail** | 应用没挂载（`#root` 空 / 没有 `.stage-frame`）= 白屏 |
+| **fail** | 某一步 `.scene` 里既没有可见文字也没有 svg / canvas / img = 空屏 |
+| **fail** | 未捕获异常（pageerror）、console error |
+| **warn** | 某步没有可见的 `[data-role="primary"]` |
+| **warn** | 子资源加载失败（字体 CDN / 缺图 / 缺音频不计入） |
+
+失败会把那一步截图写到 `render/smoke/`，直接看图定位。
+
+```bash
+npm run smoke                        # 默认 :5173，走全部步骤
+npm run smoke -- --max-steps=12      # 边写边测，快速过一遍
+npm run smoke -- --chapter=3         # 只测第 4 章（0-indexed）
+npm run smoke -- --shots             # 每步都截图，当 contact sheet 用
+npm run smoke -- --url=http://localhost:5174/
+```
+
+开发服务器没在跑时，它会**自动用 `vite preview` 起 `dist/`**，所以
+`npm run verify` 不依赖你另开一个终端。
+
+> ⚠️ **没装 playwright 时 smoke 会跳过并 exit 0**（装：
+> `npm i -D playwright && npx playwright install chromium`）。
+> **跳过 ≠ 通过** —— 汇报时必须写明「smoke 已跳过，白屏类问题未覆盖」。
 
 ---
 

@@ -190,6 +190,12 @@ chmod +x scripts/synthesize-audio.sh
 # in chapter TSX/CSS before opening a browser. See references/VISUAL-QA.md.
 cp "$TEMPLATES/scripts/inspect-layout.mjs"     scripts/inspect-layout.mjs
 
+# Render smoke test — the one gate that actually runs the app. layout:check is
+# pure source analysis and can be fully green while the page renders blank
+# (see the header of smoke-render.mjs for the incident). Needs Playwright at
+# run time only; skips loudly with exit 0 when it isn't installed.
+cp "$TEMPLATES/scripts/smoke-render.mjs"       scripts/smoke-render.mjs
+
 # Audio measurement + the headless record → mux pipeline (references/RECORDING.md).
 # record-auto/build-video only need ffmpeg + Playwright at RUN time, so they
 # ship unconditionally — nothing is installed for projects that never record
@@ -242,6 +248,8 @@ p.scripts = Object.assign({}, p.scripts, {
   "extract-narrations": "tsx scripts/extract-narrations.ts",
   "synthesize-audio":   "bash scripts/synthesize-audio.sh",
   "layout:check":       "node scripts/inspect-layout.mjs .",
+  "smoke":              "node scripts/smoke-render.mjs",
+  "verify":             "npm run layout:check && npm run build && npm run smoke",
   "audio:report":       "node scripts/audio-report.mjs",
   "audio:track":        "node scripts/build-audio-track.mjs",
   "video:record":       "node scripts/record-auto.mjs",
@@ -355,10 +363,19 @@ cat <<EOF
 
 视觉自检（每章完工 / 录屏前必走）：
 
-  • npm run layout:check        # 跑 inspect-layout.mjs（结构层机器检查）
+  • npm run verify              # 一条命令跑完下面三道机器闸
+      ├ npm run layout:check    #   结构层：静态分析（含中文裸直引号检测）
+      ├ npm run build           #   tsc -b && vite build —— 类型 + 解析错误
+      └ npm run smoke           #   运行层：真浏览器逐步走，白屏必红
   • 浏览器开 http://localhost:5174/?layout=1
                                   # 走一遍英雄帧（视觉层人工检查）
   • 详见 $SKILL_DIR/references/VISUAL-QA.md
+
+  ⚠️ layout:check 从不加载页面，全绿不代表应用能跑 —— 白屏只有 smoke 抓得到。
+     没装 playwright 时 smoke 会跳过并 exit 0，跳过就如实说「smoke 已跳过」。
+     装它：npm i -D playwright && npx playwright install chromium
+  ⚠️ 中文字符串一律用全角 “ ” —— ASCII 直引号会让整个文件解析失败 → 整站白屏，
+     而 HTTP 仍然返回 200，极难排查。
 
 卡壳时可翻：
 

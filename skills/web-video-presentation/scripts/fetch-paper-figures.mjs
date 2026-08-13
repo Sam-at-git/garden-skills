@@ -12,13 +12,25 @@
  *   node fetch-paper-figures.mjs 1706.03762            # arXiv id (latest v)
  *   node fetch-paper-figures.mjs 1706.03762v7          # pinned version
  *   node fetch-paper-figures.mjs https://arxiv.org/html/1706.03762v7
+ *   node fetch-paper-figures.mjs ./saved.html          # 另存的网页 + 同名 _files/ 目录
  *   node fetch-paper-figures.mjs ./saved.html --base https://arxiv.org/html/1706.03762v7
- *   node fetch-paper-figures.mjs 1706.03762 --out ./paper-figures
+ *   node fetch-paper-figures.mjs 1706.03762 --out ./paper-figures --timeout 30
+ *
+ * OFFLINE / SANDBOX: if the network is blocked, don't hand-map filenames to
+ * figure numbers — that is how Fig 8 and Fig 40 get swapped. Save the page from
+ * a browser ("网页，全部") and feed the .html here instead: images are copied out
+ * of the sibling `_files/` folder with zero network, and the figcaption → 图号
+ * mapping in figures.md is generated exactly as in the online path. `--base` is
+ * optional in that mode — only assets missing from disk fall back to it.
  *
  * Output (default ./paper-figures/):
  *   fig-01.png, fig-02a.png, …    the images, renamed by label
  *   figures.json                  machine-readable manifest
  *   figures.md                    human-readable index, paste into paper-digest §8
+ *
+ * Every network call has a hard `--timeout` (default 20s) and remote runs start
+ * with a reachability preflight, so a blackholed host fails in seconds with the
+ * offline route printed — it never hangs.
  *
  * Exit codes: 0 ok · 1 nothing found · 2 bad invocation / fetch failed.
  *
@@ -49,14 +61,57 @@ function resolveSource(s) {
 }
 
 const { url, local } = resolveSource(src);
-if (local && !url) {
-  console.error("✗ 本地 HTML 需要 --base <原始页面 URL> 才能解析相对图片地址。");
-  process.exit(2);
+// Directory the saved page lives in — "浏览器另存网页" drops its assets into a
+// sibling `<name>_files/` folder, so relative <img src> resolve against it and
+// no network is needed at all. --base is therefore OPTIONAL in local mode; it
+// is only consulted for assets that aren't on disk.
+const localDir = local ? path.dirname(path.resolve(local)) : null;
+
+const TIMEOUT_MS = Number(flag("--timeout", "20")) * 1000;
+
+/**
+ * fetch with a hard deadline.
+ *
+ * Bare `fetch` has NO default timeout: inside a sandbox that silently blackholes
+ * arxiv.org the script hangs forever with no output and no error — you only find
+ * out by killing it. Every network call goes through here.
+ */
+async function fetchWithTimeout(u, extra = {}) {
+  return fetch(u, {
+    headers: { "user-agent": "Mozilla/5.0" },
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    ...extra,
+  });
+}
+
+/** Turn an AbortError into a message that names the actual problem. */
+function netMessage(e, u) {
+  if (e?.name === "TimeoutError" || e?.name === "AbortError") {
+    return `${Math.round(TIMEOUT_MS / 1000)}s 内没有响应（网络被拦截或站点不可达）: ${u}`;
+  }
+  return `${e.message} — ${u}`;
+}
+
+/** Fail fast, with the offline route spelled out, rather than hanging. */
+async function preflight() {
+  try {
+    await fetchWithTimeout(url, { method: "HEAD", redirect: "follow" });
+  } catch (e) {
+    console.error(`✗ 连不上 ${new URL(url).host} — ${netMessage(e, url)}`);
+    console.error("");
+    console.error("  沙箱 / 容器里通常就是网络被拦。改走「另存网页」路线（PAPER-INTERPRETATION.md §6.5）：");
+    console.error("    1. 在有网的浏览器里打开该页，另存为「网页，全部」→ 得到 page.html + page_files/");
+    console.error("    2. 把两者拷进本机，然后：");
+    console.error(`       node ${path.basename(process.argv[1])} ./page.html --out ./paper-figures`);
+    console.error("    图片直接从 page_files/ 读，不再走网络，figcaption→图号 的映射照常生成。");
+    process.exit(2);
+  }
 }
 
 async function getHtml() {
   if (local) return fs.readFileSync(local, "utf8");
-  const r = await fetch(url, { headers: { "user-agent": "Mozilla/5.0" }, redirect: "follow" });
+  await preflight();
+  const r = await fetchWithTimeout(url, { redirect: "follow" });
   if (!r.ok) throw new Error(`HTTP ${r.status} ${url}`);
   return r.text();
 }
@@ -111,34 +166,70 @@ fs.mkdirSync(outDir, { recursive: true });
 const manifest = [];
 let n = 0;
 
+/**
+ * Where does this <img src> actually live?
+ *
+ * In local mode a relative src is almost always a file the browser already
+ * saved next to the HTML (`page_files/x1.png`), so disk wins over the network:
+ * the whole point of the saved-page route is that it works with no connectivity.
+ * Falls back to `--base` (or an absolute src) only when the file isn't there.
+ */
+function resolveAsset(srcAttr) {
+  if (localDir && !/^https?:\/\//.test(srcAttr)) {
+    const onDisk = path.resolve(localDir, decodeURIComponent(srcAttr.split(/[?#]/)[0]));
+    if (fs.existsSync(onDisk)) return { disk: onDisk, source: path.relative(localDir, onDisk) };
+  }
+  if (!url) return null;
+  const abs = new URL(srcAttr, url).toString();
+  return { abs, source: abs };
+}
+
+let missingBase = 0;
+
 for (const f of figs) {
   const num = String(f.label.match(/(\d+)/)?.[1] ?? ++n).padStart(2, "0");
   const kind = /^Table/i.test(f.label) ? "table" : "fig";
   for (let i = 0; i < f.srcs.length; i++) {
     const suffix = f.srcs.length > 1 ? String.fromCharCode(97 + i) : "";
-    const abs = new URL(f.srcs[i], url).toString();
-    const ext = (path.extname(new URL(abs).pathname) || ".png").split("?")[0];
+    const tag = `${f.label}${suffix ? ` (${suffix})` : ""}`;
+    const at = resolveAsset(f.srcs[i]);
+    if (!at) {
+      missingBase++;
+      console.error(`✗ ${tag}  ${f.srcs[i]} — 本地找不到该文件，且没给 --base <原始页面 URL>`);
+      continue;
+    }
+    const fromPath = at.disk ?? new URL(at.abs).pathname;
+    const ext = (path.extname(fromPath) || ".png").split("?")[0];
     const file = `${kind}-${num}${suffix}${ext}`;
     const dest = path.join(outDir, file);
     try {
-      const r = await fetch(abs, { headers: { "user-agent": "Mozilla/5.0" } });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      fs.writeFileSync(dest, Buffer.from(await r.arrayBuffer()));
-      manifest.push({ label: f.label, part: suffix || null, file, caption: f.caption, source: abs });
-      console.log(`✓ ${f.label}${suffix ? ` (${suffix})` : ""}  → ${file}`);
+      if (at.disk) {
+        fs.copyFileSync(at.disk, dest);
+      } else {
+        const r = await fetchWithTimeout(at.abs);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        fs.writeFileSync(dest, Buffer.from(await r.arrayBuffer()));
+      }
+      manifest.push({ label: f.label, part: suffix || null, file, caption: f.caption, source: at.source });
+      console.log(`✓ ${tag}  → ${file}${at.disk ? "  (本地)" : ""}`);
     } catch (e) {
-      console.error(`✗ ${f.label}${suffix ? ` (${suffix})` : ""}  ${abs} — ${e.message}`);
+      console.error(`✗ ${tag}  ${netMessage(e, at.source)}`);
     }
   }
 }
 
-fs.writeFileSync(path.join(outDir, "figures.json"), JSON.stringify({ source: url, figures: manifest }, null, 2));
+if (missingBase > 0) {
+  console.error(`\n! ${missingBase} 张图既不在本地也无法解析 —— 补一个 --base <原始页面 URL> 再跑一次。`);
+}
+
+const sourceLabel = url ?? path.resolve(local);
+fs.writeFileSync(path.join(outDir, "figures.json"), JSON.stringify({ source: sourceLabel, figures: manifest }, null, 2));
 fs.writeFileSync(
   path.join(outDir, "figures.md"),
   [
     `# 论文原图清单`,
     ``,
-    `来源：${url}`,
+    `来源：${sourceLabel}`,
     ``,
     `> ⚠️ **用前先确认许可**：arXiv 各篇 license 不同（perpetual non-exclusive / CC-BY / CC-BY-NC …）。`,
     `> 逐条填下面的「可用」列，再决定 cite 原图还是 redraw。做法见 PAPER-INTERPRETATION.md §6.5。`,
