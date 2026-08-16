@@ -2,12 +2,17 @@ import type { CSSProperties, ReactNode } from "react";
 import { useStageScale } from "../hooks/useStageScale";
 
 interface Props {
-  onAdvance(): void;
+  /** Fired for a click anywhere on the 16:9 frame that isn't a button, a
+   *  link, an input or a `[data-no-advance]` subtree. What the click MEANS is
+   *  App's call, not the Stage's: advance in manual/audio, pause/resume in
+   *  auto. */
+  onStageClick(): void;
   children: ReactNode;
 }
 
 /**
- * The 16:9 stage. Click anywhere except interactive children = advance.
+ * The 16:9 stage. Click anywhere except interactive children = advance
+ * (or, in auto mode, pause/resume — see App.tsx).
  *
  * Layout structure (3 nested elements):
  *   .app-shell    ← full viewport, flex-centers the fitter
@@ -19,7 +24,7 @@ interface Props {
  * Surface colors come from the active theme's CSS custom properties
  * (var(--shell), var(--surface)) — see themes/<id>/tokens.css.
  */
-export function Stage({ onAdvance, children }: Props) {
+export function Stage({ onStageClick, children }: Props) {
   const scale = useStageScale();
   const fitterStyle: CSSProperties = {
     width: 1920 * scale,
@@ -37,7 +42,7 @@ export function Stage({ onAdvance, children }: Props) {
           onClick={(e) => {
             const t = e.target as HTMLElement;
             if (t.closest("button, a, input, [data-no-advance]")) return;
-            onAdvance();
+            onStageClick();
           }}
         >
           {children}

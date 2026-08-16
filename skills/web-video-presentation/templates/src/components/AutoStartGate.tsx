@@ -48,7 +48,7 @@ export function AutoStartGate({ visible, onStart }: Props) {
         <div className="auto-gate-sub">
           Audio plays per step and advances automatically.
           <br />
-          Press <kbd>M</kbd> any time to switch modes.
+          Click anywhere to pause · <kbd>M</kbd> to switch modes.
         </div>
       </div>
     </div>

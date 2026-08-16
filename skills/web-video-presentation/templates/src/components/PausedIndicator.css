@@ -1,0 +1,38 @@
+.pi {
+  position: fixed;
+  /* Clears the 60px `.pb-hover` band so the badge never triggers the
+     progress bar, and never overlaps the GitHub link that lives in it. */
+  bottom: 76px;
+  right: 20px;
+  z-index: 12;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  color: #f4f4f5;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  /* Must never swallow the click that resumes playback. */
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity var(--dur-base) var(--ease-quart),
+    transform var(--dur-base) var(--ease-quart);
+}
+.pi-on {
+  opacity: 1;
+  transform: translateY(0);
+}
+.pi svg {
+  display: block;
+  color: #facc15;
+}
+.pi-label {
+  /* Trailing letter-spacing would push the text off-center in the pill. */
+  margin-right: -0.18em;
+}

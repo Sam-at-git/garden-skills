@@ -156,6 +156,10 @@ cp "$TEMPLATES/src/components/AutoStartGate.tsx"  src/components/AutoStartGate.t
 cp "$TEMPLATES/src/components/AutoStartGate.css"  src/components/AutoStartGate.css
 cp "$TEMPLATES/src/components/AutoToggle.tsx"     src/components/AutoToggle.tsx
 cp "$TEMPLATES/src/components/AutoToggle.css"     src/components/AutoToggle.css
+# App.tsx imports PausedIndicator unconditionally — omitting these two made the
+# very first `npm run build` of every new project fail with TS2307.
+cp "$TEMPLATES/src/components/PausedIndicator.tsx" src/components/PausedIndicator.tsx
+cp "$TEMPLATES/src/components/PausedIndicator.css" src/components/PausedIndicator.css
 
 # 论文模式公式渲染（可选，仅 --math）：注入 KaTeX + <Math>/<Formula> 组件 +
 # math.css。不传 --math 时整段跳过 —— 脚手架输出与不传时字节一致。

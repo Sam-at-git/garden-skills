@@ -25,13 +25,22 @@ function readModeFromURL(): PlaybackMode {
  *
  * `autoStarted` exists separately because browsers require a user gesture
  * before audio can autoplay — `AutoStartGate` flips it on space-press.
+ *
+ * `paused` is a state of its own, NOT a fourth mode: while paused the mode
+ * stays `auto` and the URL keeps `?auto=1`, so resuming picks auto playback
+ * back up exactly where it stopped. It only means anything in `auto` mode —
+ * in `manual` / `audio` there is nothing running to hold — and it survives
+ * step changes, so pausing and then arrow-keying through a few steps leaves
+ * you paused on the step you land on.
  */
 export function useAutoMode() {
   const [mode, setModeState] = useState<PlaybackMode>(() => readModeFromURL());
   const [autoStarted, setAutoStarted] = useState(false);
+  const [paused, setPaused] = useState(false);
 
   const setMode = useCallback((m: PlaybackMode) => {
     setModeState(m);
+    setPaused(false);
     if (typeof window === "undefined") return;
     const url = new URL(window.location.href);
     url.searchParams.delete("audio");
@@ -46,6 +55,12 @@ export function useAutoMode() {
     setMode(ORDER[(ORDER.indexOf(mode) + 1) % ORDER.length]!);
   }, [mode, setMode]);
 
+  /** Stage-click handler for `auto` mode. Only togglable once auto playback
+   *  has actually started — before that the AutoStartGate owns the click. */
+  const togglePause = useCallback(() => {
+    setPaused((p) => !p);
+  }, []);
+
   // Keyboard: `M` cycles mode. `Space` starts auto if gated.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -55,6 +70,7 @@ export function useAutoMode() {
         cycleMode();
       } else if (e.key === " " && mode === "auto" && !autoStarted) {
         e.preventDefault();
+        setPaused(false);
         setAutoStarted(true);
       }
     };
@@ -62,5 +78,14 @@ export function useAutoMode() {
     return () => window.removeEventListener("keydown", onKey);
   }, [mode, autoStarted, cycleMode]);
 
-  return { mode, setMode, cycleMode, autoStarted, setAutoStarted };
+  return {
+    mode,
+    setMode,
+    cycleMode,
+    autoStarted,
+    setAutoStarted,
+    paused,
+    setPaused,
+    togglePause,
+  };
 }

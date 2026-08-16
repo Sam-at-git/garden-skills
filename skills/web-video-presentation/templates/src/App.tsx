@@ -22,6 +22,7 @@ import { useCallback, useEffect } from "react";
 import { AutoStartGate } from "./components/AutoStartGate";
 import { AutoToggle } from "./components/AutoToggle";
 import { LayoutDebug } from "./components/LayoutDebug";
+import { PausedIndicator } from "./components/PausedIndicator";
 import { ProgressBar } from "./components/ProgressBar";
 import { Stage } from "./components/Stage";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
@@ -46,7 +47,8 @@ export default function App() {
   const Cmp = ch.Component;
   const stepText = ch.narrations[stepper.cursor.step] ?? "";
 
-  const { mode, cycleMode, autoStarted, setAutoStarted } = useAutoMode();
+  const { mode, cycleMode, autoStarted, setAutoStarted, paused, togglePause } =
+    useAutoMode();
 
   // ── ?layout=1 mode: visual QA overlay (see references/VISUAL-QA.md §3) ──
   const layoutDebugOn =
@@ -85,11 +87,22 @@ export default function App() {
     estimateFallbackMs: estimateMs(stepText),
     onAutoAdvance,
     autoStarted,
+    paused,
   });
+
+  // What a click on the stage means depends on who's driving the timeline.
+  // In manual / audio the viewer is, so a click advances. In auto the page
+  // is, so a click holds it — advancing by click there would fight the
+  // audio that's still playing. (Arrow keys still step in every mode, which
+  // is how you scrub while paused.)
+  const onStageClick = useCallback(() => {
+    if (mode === "auto" && autoStarted) togglePause();
+    else stepper.next();
+  }, [mode, autoStarted, togglePause, stepper]);
 
   return (
     <>
-      <Stage onAdvance={stepper.next}>
+      <Stage onStageClick={onStageClick}>
         <div key={ch.id} className="scene">
           <Cmp step={stepper.cursor.step} />
         </div>
@@ -100,6 +113,7 @@ export default function App() {
         onJumpChapter={stepper.jumpToChapter}
       />
       <AutoToggle mode={mode} onCycle={cycleMode} />
+      <PausedIndicator visible={mode === "auto" && autoStarted && paused} />
       <AutoStartGate
         visible={mode === "auto" && !autoStarted}
         onStart={() => setAutoStarted(true)}
