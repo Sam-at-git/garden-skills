@@ -145,7 +145,11 @@ Plan / 第 1 章验收 / Checkpoint Audio / 主题与稿子取舍）上。
    - `npm run layout:check` —— 静态层。已覆盖 **narrations.ts 的 step 数 ↔
      章节代码 `if (step===N)` 最大 N + 1**（rule 名 `step-count-mismatch`）↔
      `data-composition` 合法性 ↔ 主题色 / 字 token ↔ **中文里的裸直引号**
-     （`broken-string-literal`）。**这些不变量不要再手搓 `node -e` 验**。
+     （`broken-string-literal`）↔ **`ch` 写在没设 `font-size` 的容器上**
+     （`ch-width-without-font-size`）↔ **定位 transform 被入场动画覆盖**
+     （`transform-clobbered-by-animation`）。**这些不变量不要再手搓 `node -e` 验**。
+     后两条是"渲染出来才看得见"的排版事故 —— 源码 review 看不出，
+     所以交给机器。
    - `npm run build`（= `tsc -b && vite build`）—— 类型 + **解析**错误。
      **别用 `npx tsc --noEmit` 代替**：让页面白屏的是打包那一侧，两者
      判定不一定一致。

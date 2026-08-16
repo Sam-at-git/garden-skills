@@ -171,6 +171,10 @@ emoji 当图标 / 假数据假 logo / 整章同一种入场动画 / 每屏右下
   支持点击跳转章节（录屏时摄像头看不到任何 chrome 控件）
 - **全局 step 驱动**：点击舞台空白处 / 键盘 ←/→ 推进；章节是 `step`
   的纯函数，没有定时器、没有命令式状态
+- **Auto 模式下点击 = 暂停 / 继续**（不是推进，那时候推进的是页面自己）。
+  暂停只停音频和自动推进的倒计时，**CSS 动画照常跑完停在终态** —— 所以
+  章节里的入场动画不需要为暂停做任何事。反过来说，**别写靠 `infinite`
+  循环动画来表达"正在进行"的关键信息**：暂停时它不会停，看着像没暂停。
 
 ---
 
@@ -206,6 +210,25 @@ emoji 当图标 / 假数据假 logo / 整章同一种入场动画 / 每屏右下
 ### 其它工程红线
 
 - 不用 `setTimeout` / `setInterval` 驱动动画 —— 用 CSS keyframes
+- **`ch` 只能写在设了 `font-size` 的元素上**。`ch` 按**元素自己**的字号算，
+  写在只管布局的外层容器上时，它按继承来的 16px 算 —— `max-width: 40ch`
+  是 ~330px，不是你脑子里那个给 54px 标题用的 ~1300px。结果是标题每行
+  三五个字、纵向顶出舞台。**外层容器用 px，`ch` 留给它包着的那段文字。**
+  （`layout:check` 的 `ch-width-without-font-size` 会 warn）
+- **定位用的 `transform` 会被入场动画整个覆盖**。
+  `left: 50%; transform: translateX(-50%)` 配上一个 keyframe 里写了
+  `transform: translateY(...)` 的入场动画 —— CSS 里 `transform` 是**单个属性**，
+  keyframe 那一条会**替换**掉居中那一条，加 `forwards` 就是永久偏移半个自身宽度，
+  挂在它上面的连线也跟着全部错位。**绝对定位一律用 `left` / `top` 落位，
+  入场只动 `opacity`**；非要位移就把偏移量写进每一帧。
+  （`layout:check` 的 `transform-clobbered-by-animation` 会 warn）
+- **要把两个盒子连起来的线，画进 SVG，用显式坐标。** 用
+  `transform: rotate(Ndeg) scaleX()` 手调角度的 div 连线，在任何一端尺寸或
+  位置变化后就不再落在端点上 —— 它没有"端点"这个概念，只有一个角度。
+  流程图 / 循环图 / 分叉图统一：一个 `<svg viewBox>`，节点和线都写坐标，
+  箭头用按方向算好的 `<polygon>`，动效走 `pathLength={1}` +
+  `stroke-dasharray: 1` + `stroke-dashoffset: 1 → 0`。
+  （纯装饰性的斜线、坡度示意不受此限 —— 它们不需要对齐到谁）
 - 章节内的可交互元素（按钮 / 自定义控件）加 `data-no-advance`，
   否则点了会被舞台误推进 step
 - 章节代码物理隔离：每章独立文件夹、独立 CSS 类前缀，不跨章 import

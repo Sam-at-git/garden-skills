@@ -633,6 +633,88 @@ function findHeadlinesWithoutMaxWidth(css) {
   return out;
 }
 
+/**
+ * Find `max-width: <N>ch` in a block that never sets its own font-size.
+ *
+ * `ch` resolves against the ELEMENT'S OWN font-size. On a wrapper that only
+ * lays out children, that is the inherited 16px — so `max-width: 40ch` is
+ * ~330px, not the ~1300px the author pictured for the 54px headline inside.
+ * The headline then wraps every 3–9 characters and overflows the stage
+ * vertically. This shipped twice before it was caught by eye, and it is
+ * invisible in source review because both declarations look reasonable alone.
+ *
+ * Blocks that DO set font-size are exempt: there `ch` means what the author
+ * intended (a measure for that text).
+ */
+function findChWidthWithoutFontSize(css) {
+  const stripped = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const out = [];
+  const blockRe = /([^{}]+)\{([^{}]*)\}/g;
+  let m;
+  while ((m = blockRe.exec(stripped)) !== null) {
+    const selector = m[1].trim().split("\n").pop().trim();
+    const body = m[2];
+    if (/font-size\s*:/i.test(body)) continue;
+    const w = body.match(/max-width\s*:\s*(\d+(?:\.\d+)?)ch/i);
+    if (!w) continue;
+    out.push({ selector, value: `${w[1]}ch` });
+  }
+  return out;
+}
+
+/**
+ * Find rules whose positioning `transform` is silently overwritten by their
+ * own entrance animation.
+ *
+ * `left: 50%; transform: translateX(-50%)` plus
+ * `animation: rise ...` where `@keyframes rise { from/to { transform: translateY(...) } }`
+ * means the keyframe's transform REPLACES the centering one for the whole
+ * animation — and with `forwards` that is permanent. The element silently
+ * drifts by half its width, taking any hand-placed connector lines with it.
+ *
+ * Fix: position with left/top (or a wrapper) and animate opacity only, or
+ * fold the offset into every keyframe.
+ */
+function findTransformClobberedByAnimation(css) {
+  const stripped = css.replace(/\/\*[\s\S]*?\*\//g, "");
+
+  // Keyframe names that set `transform` WITHOUT carrying a percentage offset.
+  // Carrying it (`translate(-50%, 18px)`) is the documented fix, not the bug,
+  // so those keyframes must not be flagged.
+  const clobberingKeyframes = new Set();
+  const kfRe = /@keyframes\s+([\w-]+)\s*\{/g;
+  let k;
+  while ((k = kfRe.exec(stripped)) !== null) {
+    const open = kfRe.lastIndex - 1;
+    const body = stripped.slice(open, skipBracketed(stripped, open));
+    const decls = [...body.matchAll(/transform\s*:\s*([^;}]+)/gi)].map((d) => d[1]);
+    if (decls.length === 0) continue;
+    if (decls.some((d) => !d.includes("%"))) clobberingKeyframes.add(k[1]);
+  }
+  if (clobberingKeyframes.size === 0) return [];
+
+  const out = [];
+  const blockRe = /([^{}]+)\{([^{}]*)\}/g;
+  let m;
+  while ((m = blockRe.exec(stripped)) !== null) {
+    const selector = m[1].trim().split("\n").pop().trim();
+    if (selector.startsWith("@") || /^\d|^from$|^to$/.test(selector)) continue;
+    const body = m[2];
+    const t = body.match(/(?:^|[;{\s])transform\s*:\s*([^;}]+)/i);
+    if (!t) continue;
+    // Only a POSITIONING transform is at risk; a pure entrance start state
+    // (scale(0) / translateY(20px)) is meant to be replaced.
+    if (!/translate[XY]?\s*\(\s*-?\d*\.?\d+%/.test(t[1])) continue;
+    const anim = body.match(/animation(?:-name)?\s*:\s*([^;}]+)/i);
+    if (!anim) continue;
+    const named = [...clobberingKeyframes].find((n) =>
+      new RegExp(`(^|[\\s,])${n}([\\s,]|$)`).test(anim[1]),
+    );
+    if (named) out.push({ selector, keyframe: named });
+  }
+  return out;
+}
+
 /** True if chapter CSS uses any density token. */
 function usesDensityTokens(css) {
   return /var\s*\(\s*--(body-min|headline-min|data-min|max-text-width|max-title-width)/.test(css);
@@ -974,6 +1056,26 @@ function analyzeChapter(folderPath) {
         level: "fail",
         rule: "headline-no-max-width",
         detail: `${noMaxWidth.length} hero headline(s) ≥ ${HEADLINE_MIN_PX}px without max-width: ${noMaxWidth.slice(0, 3).map((x) => x.selector).join(", ")}… — use max-width: var(--max-title-width) or 24~28ch`,
+      });
+    }
+
+    // 6b. WARN: `ch` max-width on a wrapper that sets no font-size.
+    const chWidth = findChWidthWithoutFontSize(css);
+    if (chWidth.length > 0) {
+      checks.push({
+        level: "warn",
+        rule: "ch-width-without-font-size",
+        detail: `${chWidth.length} block(s) set max-width in \`ch\` but no font-size: ${chWidth.slice(0, 3).map((x) => `${x.selector}={${x.value}}`).join(", ")}${chWidth.length > 3 ? "…" : ""} — \`ch\` resolves against the element's OWN size, so on a wrapper it means the inherited 16px (40ch ≈ 330px), squeezing a 54px headline to a few characters a line. Put the measure on the text element, or use px on the wrapper.`,
+      });
+    }
+
+    // 6c. WARN: positioning transform overwritten by the element's own animation.
+    const clobbered = findTransformClobberedByAnimation(css);
+    if (clobbered.length > 0) {
+      checks.push({
+        level: "warn",
+        rule: "transform-clobbered-by-animation",
+        detail: `${clobbered.length} rule(s) combine a percentage-offset transform with an animation whose keyframes also set transform: ${clobbered.slice(0, 3).map((x) => `${x.selector} ← @${x.keyframe}`).join(", ")}${clobbered.length > 3 ? "…" : ""} — the keyframe REPLACES the offset, so the element drifts (and any hand-placed connector misses it). Position with left/top and animate opacity only.`,
       });
     }
 

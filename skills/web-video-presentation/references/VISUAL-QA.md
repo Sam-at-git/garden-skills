@@ -75,6 +75,15 @@ playwright**（保持零依赖、易集成）。覆盖以下检查：
 - **每个 chapter CSS 应该消费 density tokens** —— 没找到 `var(--body-min)` /
   `var(--max-text-width)` / `var(--headline-min)` 中的任一个 = warn
   （说明 chapter 写死了 px）
+- **`ch` 写在没有 `font-size` 的块上**（rule `ch-width-without-font-size`）——
+  `ch` 按元素**自己**的字号算。写在只管布局的外层容器上，它按继承的 16px 算：
+  `max-width: 40ch` ≈ 330px，而不是给里面 54px 标题预想的 ~1300px。
+  症状是标题每行三五个字、纵向顶出舞台。把 measure 挪到那段文字上，
+  容器改 px。
+- **定位 transform 被自己的动画覆盖**（rule `transform-clobbered-by-animation`）——
+  `transform: translateX(-50%)` 配一个 keyframe 里也写 `transform` 的入场动画，
+  keyframe 会**替换**掉居中那一条，元素永久偏移半个自身宽度，挂在它上面的
+  连线全部错位。绝对定位用 `left` / `top`，入场只动 `opacity`。
 
 ### 2.3 输出格式
 
@@ -141,6 +150,12 @@ npm run smoke     # 真浏览器逐步走一遍，白屏 / 未捕获异常 = 红
 | **fail** | 未捕获异常（pageerror）、console error |
 | **warn** | 某步没有可见的 `[data-role="primary"]` |
 | **warn** | 子资源加载失败（字体 CDN / 缺图 / 缺音频不计入） |
+
+> **primary 的采样窗口只有 ~220ms。** smoke 进入一步后很快就取样，所以
+> `data-role="primary"` 那个元素的**入场 delay 必须 ≤150ms**，否则取样时它
+> 还是 `opacity: 0`，报 "没有可见的 primary" —— 这是 warn，不是 bug，但每次
+> 都得回去确认一遍。想表达"次要的先来、主角后到"，改成让 secondary 延后，
+> 别延后 primary。
 
 失败会把那一步截图写到 `render/smoke/`，直接看图定位。
 
@@ -257,6 +272,16 @@ contact sheet 的好处：
 **症状**：h1 一行 30+ 字，从左铺到右，没有断行
 **修复**：加 `max-width: 24ch ~ 28ch`（中文）/ `max-width: 50ch`（英文）
 **根因**：没意识到 hero text 应该"撑住主视觉但留白围绕"
+
+### 4.2b 标题被挤成一条竖带
+
+**症状**：一句话的标题每行只排 3~9 个字，纵向顶出舞台上下边界
+**修复**：把外层容器的 `max-width: Nch` 改成 px；`ch` 留给设了 `font-size`
+的那个文字元素
+**根因**：`ch` 按元素自己的字号算。容器不设 `font-size` 就按继承的 16px 算，
+`40ch` ≈ 330px —— 和作者脑子里那个"给 54px 标题的 40 个字"差了四倍。
+两个声明单看都合理，所以源码 review 看不出来，只有渲染出来才现形。
+`layout:check` 的 `ch-width-without-font-size` 会 warn。
 
 ### 4.3 主视觉面积不足
 

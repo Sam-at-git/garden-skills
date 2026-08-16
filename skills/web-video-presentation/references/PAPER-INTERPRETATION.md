@@ -528,6 +528,43 @@ import { PaperFigure, FigureCredit } from "../../components/PaperFigure";
 
 > **图片放哪**：`presentation/public/paper/`，代码里用 `/paper/fig-01.png` 引用。
 
+#### ⚠️ `focus` 只适合窄高的图，宽幅图表会被裁掉坐标轴
+
+`focus` 的实现是 `scale(100 / w)` + 平移，也就是**把裁切区放大到整帧宽度**，
+纵向按同一个倍数一起拉伸。可见的纵向比例是
+
+```
+可见高度占比 = 帧高 × 图片宽高比 × w ÷ (100 × 帧宽)
+```
+
+对一张 2000×1100 的横向柱图，想裁出 20% 宽的一组柱，纵向就只剩十几个百分点
+—— 出来的画面是标题和图例，柱子和坐标轴全在帧外。**这个失败很安静**：图正常
+显示、`smoke` 也过，只有肉眼看渲染结果才发现讲的和显示的不是一个东西。
+
+**宽幅图表（柱图 / 折线 / 散点）改用「整图 + 遮罩聚光」**，两步：
+
+1. **外层容器宽度写成 `高度 × 图片宽高比`**。`.pf-frame` 里图片是
+   `object-fit: contain`，容器比例不对就会留出 letterbox 空白，后面所有按
+   百分比定位的遮罩、扫描线、括号全会落在空白上而不是图上。
+2. 在这个容器里叠**按图宽百分比**定位的遮罩，把非重点区调暗：
+
+```tsx
+{/* shade-arena.png 是 2000×1400 → 1.4286；height 660 → width 943 */}
+<div className="se-fig" style={{ width: 943, position: "relative", margin: "0 auto" }}>
+  <PaperFigure src="/paper/shade-arena.png" label="Fig 2.7.1.A"
+               credit="Anthropic, 2026" alt="…" height={660} />
+  <span className="se-mask" style={{ left: 0, width: "34%", height: 660 }} />
+  <span className="se-bracket" style={{ left: "34%", width: "66%", top: 664 }} />
+</div>
+```
+
+遮罩是**高亮**不是改图 —— 数值、坐标、配色一个都没动，比裁切更保守。
+上屏时口播照样要交代「看这张图的哪一块」（§6.2）。
+
+**百分比对不上时，别猜坐标轴在图的哪个位置**：先渲染一次，量出你画的那条线
+落在了哪个刻度上，再线性反推。凭原图缩略图目测轴的起止百分比，实测偏了一倍
+以上是常事。
+
 ### 6.2 口播稿也要点到原图（★ 别让画面独自承担）
 
 画面挂了原图，**口播稿必须配合**，否则观众不知道自己在看论文里的东西。
