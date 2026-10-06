@@ -141,7 +141,10 @@ Plan / 第 1 章验收 / Checkpoint Audio / 主题与稿子取舍）上。
    用这三个工具，**不要**用 shell 的 `cat` / `grep` / `awk`。
 2. **机器可判定的结构不变量 → 具名 npm 脚本**（已被 allowlist 覆盖，
    跨项目 / 章节 / 端口永久免确认）：
-   - `npm run verify` —— **一条命令跑完下面三道闸**，完工自检默认用它。
+   - `npm run verify` —— **一条命令跑完 layout:check + evidence:check +
+     anim:budget + script:drift + build + smoke**，完工自检默认用它。
+     中间三道（证据层 / 动画 ≤ 口播 / 口播没缩水）见 VISUAL-QA §2.6，
+     没有 `evidence.ts` 或 `../script.md` 时**明说跳过** —— 跳过照实汇报。
    - `npm run layout:check` —— 静态层。已覆盖 **narrations.ts 的 step 数 ↔
      章节代码 `if (step===N)` 最大 N + 1**（rule 名 `step-count-mismatch`）↔
      `data-composition` 合法性 ↔ 主题色 / 字 token ↔ **中文里的裸直引号**
@@ -157,6 +160,11 @@ Plan / 第 1 章验收 / Checkpoint Audio / 主题与稿子取舍）上。
      `layout:check` 是纯文本分析、从不加载页面，所以它全绿**不代表应用能跑**
      （见 [`references/VISUAL-QA.md`](references/VISUAL-QA.md) §2.5 的事故）。
      没装 playwright 会跳过并 exit 0 —— **跳过必须如实汇报，不许说成通过**。
+   - `npm run visual:review` —— **画面层**：`smoke -- --shots` 截图交给能看图的
+     模型，按事故清单（中文窄列 / SVG 黑块 / 柱子离 0 线 / 缺字方框 / TeX 外露…）
+     逐帧评审，两审后才报 fail（VISUAL-QA §2.8）。这些事故上面几道闸**全绿**。
+     没配视觉模型会跳过 —— 同样照实汇报。
+   - `npm run audio:check` —— 合成完核每段 mp3 齐全、非空壳，量实测成片时长。
    - `npm run extract-narrations` 同理。
 3. **需要判气质 / 反 AI 味 / 双源原则 → reviewer agent**（Agent Teams /
    subagent）：它用 Read 工具读文件 = 零确认，且视角比自检独立。
@@ -190,7 +198,7 @@ Phase 2.4 的"实现单章"会重复 N 次 —— 每次都要回看核心约束
 | Phase 3 音频合成 | `references/AUDIO.md`（含 narrations.ts → segments.json → 任意 provider 流程，内置 voxcpm / minimax / openai） | `templates/scripts/tts-providers/README.md`（换 provider / 自带 TTS 时） |
 | Phase 4 录屏 + 后期 | `references/RECORDING.md`（含 `?auto=1` 自动录屏） | —— |
 | 选 / 造 / 切主题 | —— | `references/THEMES.md` |
-| 视觉 QA / 调试 | `references/VISUAL-QA.md`（`npm run verify` = layout:check + build + smoke；再开 `?layout=1` overlay） | —— |
+| 视觉 QA / 调试 | `references/VISUAL-QA.md`（`npm run verify` 六道机器闸；`smoke --shots` → `visual:review` 画面评审 → `sheet` 人看） | —— |
 
 > **`CHAPTER-CRAFT.md` 是写章节的单一入口**。十条原则 / 开工 self-prompting /
 > 决策树 / 反 AI 味反模式 / 完工自检全部并入这一份，**每章都从它开始**。
@@ -199,7 +207,7 @@ Phase 2.4 的"实现单章"会重复 N 次 —— 每次都要回看核心约束
 > - [`VISUAL-DIRECTION.md`](references/VISUAL-DIRECTION.md) —— **首次开工读一次**
 >   （建立 8 构图 + 视觉角色的词汇表），之后只在选构图卡壳时回查 §1 / §4
 > - [`MOTION-BLUEPRINTS.md`](references/MOTION-BLUEPRINTS.md) —— **按索引读一条**：
->   照本步的 content relationship 找到对应蓝图，只读那一条，不要通读 10 条
+>   先读 §0 通用约束（很短，每次都读），再照本步的 content relationship 找到对应蓝图，只读那一条，不要通读 13 条
 > - [`VISUAL-QA.md`](references/VISUAL-QA.md) —— **工具手册**：知道跑
 >   `npm run layout:check` 和 `?layout=1` 就够；报了具体 rule 名再按名查对应小节
 >
@@ -306,6 +314,9 @@ Phase 2.4 的"实现单章"会重复 N 次 —— 每次都要回看核心约束
      C) 第 1 章后并行开发（subagent）
         第 2~N 章用 subagent 并行 → 最快 / 用户控并行数（一次几章）
         ⚠️ 风格各章会有差异（这是预期，主题禁区兜底）
+     D) 规格驱动（spec.json + SpecChapter 渲染器）
+        每章只写一份画面规格（数据），不写 tsx/css → 最省 token / 风格全片一致
+        ⚠️ 动画上限低于手写（只有原语自带的动效）；无人值守流水线的默认
 ```
 
 **📄 论文输入额外对齐第 6 件事**（仅 paper 模式；详见
@@ -361,6 +372,12 @@ rm -rf presentation/src/chapters/01-example
 
 并把 `presentation/src/registry/chapters.ts` 里 `EXAMPLE_CHAPTER`
 的 import 和数组项移除。
+
+**片尾是脚手架自带的，不要写成章节。** 最后一章最后一步之后再「下一步」（或 Auto 模式放完最后一步），
+播放器切到 `EndCredits`：「谢谢收看」→ 标题 → 作者逐个浮现 →（有参考文献时）文献列表 6 行窗口
+匀速上滚、上沿淡出，整页 5 秒内放完（条数多就加速；超过 24 条只滚前 24 条，末尾显示「…… 等 N 篇」）。数据在 `src/credits.json`
+（`{ title, authors[], references[] }`，脚手架给空壳）；**参考文献只给 arXiv 网页和 PDF 来源**，
+其他文章留空数组。它不占 narrations、不进步数，各道闸和音频管线都不受影响；录屏会等片尾放完再停。
 
 ### 2.2 第 1 章 —— 主线程 + 强制验收
 
@@ -430,7 +447,7 @@ rm -rf presentation/src/chapters/01-example
    `<Chapter>.tsx` + `<Chapter>.css` + `narrations.ts`（论文章节多一个
    `evidence.ts`）。用 Glob 工具列一遍，缺文件 = 那个 agent 中途挂了，
    **重派该章**，别手工补半个。
-2. **`npm run verify`** —— layout:check + build + smoke 一次跑完。
+2. **`npm run verify`** —— layout:check + 内容三闸 + build + smoke 一次跑完。
    这一步会把残缺章节、引号 bug、step 数错位、白屏全部照出来。
 3. **fail 全部修完**再向用户汇报。
 
@@ -449,6 +466,18 @@ rm -rf presentation/src/chapters/01-example
 **重要**：无论选哪种模式，**用户随时可以中途切换模式**。第 2 章 OK
 后用户说"剩下的并行" / "剩下的逐章" 都行。
 
+#### 模式 D · 规格驱动（spec.json）
+
+章节不再手写 tsx / css：每一步是一段数据（构图、标题、1~5 块积木、谁是 primary、证据类型），
+由 `components/scene/SpecChapter.tsx` 用场景原语渲染。规则书只有一份：
+[`references/SPEC-AUTHORING.md`](references/SPEC-AUTHORING.md)（也是无人值守流水线喂给模型的 system prompt）。
+
+- 章节目录：`spec.json` + `narrations.ts` + `evidence.ts` + 三行壳 `<Comp>.tsx`（`import spec from "./spec.json"`）
+- 校验：`node scripts/spec-check.mjs src/chapters/<dir>`（步数 / 构图 / 积木必填 / 每步一个 primary / 文字密度 / 证据）；
+  `layout:check` 对规格章自动改读 spec，CSS 类规则不适用
+- 适用：论文解读这类结构化内容、批量生产、小模型；不适用：需要定制动画的品牌 demo（那是 A/B/C 的活）
+- 混用：一部片子里规格章和手写章可以共存，注册表不区分
+
 ### 2.4 实现单章（每章必走）
 
 详细指引见 [`references/CHAPTER-CRAFT.md`](references/CHAPTER-CRAFT.md) ——
@@ -462,8 +491,8 @@ rm -rf presentation/src/chapters/01-example
   - [`references/VISUAL-DIRECTION.md`](references/VISUAL-DIRECTION.md) —— 8 个
     构图 / 视觉角色 / 英雄帧契约 / 密度规则 / AI 味清单
   - [`references/MOTION-BLUEPRINTS.md`](references/MOTION-BLUEPRINTS.md) —— 论
-    文 / 教学常用 10 种动画节拍（process-build / compare-reveal /
-    ablation-remove / ...）
+    文 / 教学常用 13 种动画节拍（process-build / compare-reveal /
+    ablation-remove / ... / scope-expand / trip-count / scale-sweep）+ §0 通用约束
 - **每章必须有 CSS / SVG / Canvas / JS 视觉演示**，禁纯文字章节
 - **逐步揭示**：清单 / 列表必须 1 项 = 1 step，禁一次全展示
 - **双源原则**：节奏跟口播稿（顺序不能乱），细节回原文章抽（信息池 +
@@ -474,19 +503,29 @@ rm -rf presentation/src/chapters/01-example
   **命名锚点**，光写它们不改变渲染。想让 `composition.css` 的构图真的
   接管布局，再额外加一个无值属性 `data-composition-layout`（opt-in）。
   **契约只有 data-\* 属性一套**，不要写 `className="role-primary"`
-- 📄 **论文章节的证据层**：用 `<Evidence step marks>` + `<CitationChip>`
+- 📄 **论文章节的证据层**：用 `<Evidence step marks>`（左上角**不挂**论文出处行，只留章节标题）
   （`src/components/Evidence.tsx`，脚手架自带），证据数据放本章
   `evidence.ts`——**不要塞进 narrations.ts**，那是音频管线的真相源，
   `extract-narrations.ts` 遇到非字符串会直接抛错
+- 🔍 **讲论文原图的局部**：用 `<FigureLens regions active mode>`
+  （`src/components/FigureLens.tsx`，脚手架自带），有 spotlight 淡出聚光、
+  zoom 推镜、crop 子图 + 小地图三种模式；同一个实例跨步只换 `active`，
+  镜头会在区域之间滑动。见 PAPER-INTERPRETATION §6.1.1
+- 🧮 **讲公式 / 代码 / 表图**：公式用 `FormulaSlot`（规格章 `Formula`）的 `symbols` + `active`
+  逐个符号点亮、词表逐行出现，再用 `idea` / `significance` 讲思想和意义（§7）；算法用 `CodeBlock`
+  的 `notes` + `active` 逐段点亮加旁注，`vars` 走例子（§7.0）；表用 `DataTable marks` 圈出「看哪里」，
+  `intent` 写「作者想说明」（§6.4）。都是同 id 跨步只换 `active`
 - **完工自检分四层**（详见 [`references/VISUAL-QA.md`](references/VISUAL-QA.md)）：
   1. **结构层**：`npm run layout:check` 跑 `inspect-layout.mjs`
   2. **运行层**：`npm run build` + `npm run smoke` —— 应用真的能跑吗、每步
      真的画出东西了吗。**第 1、3 层全绿而整站白屏是发生过的**（VISUAL-QA §2.5）
-  3. **视觉层**：开 `?layout=1` debug overlay 逐 step 走英雄帧
+  3. **视觉层**：`npm run smoke -- --shots --settle=3000` → `npm run visual:review`
+     （多模态按事故清单评审，fail 先改）→ `npm run sheet` 人看 contact sheet；
+     细看再开 `?layout=1` debug overlay 走英雄帧
   4. **气质层**：CHAPTER-CRAFT.md Part 5 + VISUAL-DIRECTION.md §5
      + MOTION-BLUEPRINTS.md 选不同蓝图
 
-  前两层一条命令跑完：**`npm run verify`**
+  前两层一条命令跑完：**`npm run verify`**（含证据层 / 动画预算 / 口播漂移三道内容闸）
 
 ### 2.5 大改后 bump STORAGE_KEY
 
@@ -610,7 +649,8 @@ Part 8「常见反馈速查」。**关键**：先定位是哪一层（节奏 / �
 | [`references/OUTLINE-FORMAT.md`](references/OUTLINE-FORMAT.md) | Phase 1.2 必读 | outline.md 字段 spec、命名约定、章节切分、信息池 |
 | [`references/CHAPTER-CRAFT.md`](references/CHAPTER-CRAFT.md) | **Phase 2.4 每章单一必读入口** | Part 0 十条原则 / ★ 静态布局阶段 / Part 1 开工 5 问 / Part 2 关系→动作决策树 / Part 3 视觉工具箱 / Part 4 时长 / Part 5 反 AI 味反模式 / Part 6 代码硬规则 / Part 7 完工自检 / Part 8 反馈速查 |
 | [`references/VISUAL-DIRECTION.md`](references/VISUAL-DIRECTION.md) | **Phase 2.4 ★ 静态布局阶段** | 8 个构图（centered-hero / asymmetric-60-40 / split-screen / rule-of-thirds / full-width-strip / layered-depth / triptych / diagram-canvas）+ 视觉角色 / 英雄帧契约 / 密度 tokens / 反 AI 味完整清单 |
-| [`references/MOTION-BLUEPRINTS.md`](references/MOTION-BLUEPRINTS.md) | **Phase 2.4 选动画节拍** | 论文 / 教学常用 10 种蓝图（process-build / compare-reveal / ablation-remove / formula-assemble / data-countup / focus-drilldown / failure-inspect / token-transform / evidence-stack / boundary-contract） |
+| [`references/MOTION-BLUEPRINTS.md`](references/MOTION-BLUEPRINTS.md) | **Phase 2.4 选动画节拍** | §0 通用约束（对照物 / 控制变量 / 同对象改范围 / 代价可数 / 几何如实…）+ 论文 / 教学常用 13 种蓝图（process-build / compare-reveal / ablation-remove / formula-assemble / data-countup / focus-drilldown / failure-inspect / token-transform / evidence-stack / boundary-contract / scope-expand / trip-count / scale-sweep） |
+| [`references/BLOCK-CATALOG.md`](references/BLOCK-CATALOG.md) | **查积木（人看，不喂模型）** | 19 种规格积木逐个说明：描述 / 特点 / 适合与不适合 / spec 例子 / UI·UE 表达要素 / 真实渲染例图 / 校验与自动修正；附按内容选积木、常见组合、已知限制、例图重生成脚本 |
 | [`references/VISUAL-QA.md`](references/VISUAL-QA.md) | **Phase 2.4 完工自检** | 三层检查：`npm run layout:check` 静态检查 + **`npm run build` / `npm run smoke` 运行检查（§2.5）** + `?layout=1` overlay 人工检查 + 修复 catalog |
 | [`references/PAPER-INTERPRETATION.md`](references/PAPER-INTERPRETATION.md) | **论文输入时必读**（叠加在 SKILL + CHAPTER-CRAFT 之上） | paper-digest（含**前置知识台账**）/ 论文类型叙事弧 / **§2.5 概念解释层（骨架照抄论文·血肉自己长，四拍 + 断言测试）** / 证据层（事实·证据·推断·背景）/ 内容→动画→布局 map / 公式（KaTeX `--math`）/ 图表复用 / 论文级验收 |
 | [`references/EXAMPLES/`](references/EXAMPLES/) | **可选** —— 看结构 | 章节结构示意（hook / list-reveal / case-tech-review / **paper-*** 4 个论文 anchor）；**不是抄袭模板** |

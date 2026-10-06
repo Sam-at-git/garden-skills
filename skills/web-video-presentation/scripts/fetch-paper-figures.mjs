@@ -141,9 +141,10 @@ function parseFigures(html) {
     const capRaw = (body.match(/<figcaption\b[^>]*>([\s\S]*?)<\/figcaption>/) || [])[1] || "";
     const caption = strip(capRaw);
     // "Figure 3:" / "Fig. 3" / "Table 1:" → canonical label
-    const tag = caption.match(/^(Figure|Fig\.?|Table)\s*(\d+)/i);
+    // 书稿按章编号（Fig. 1.1 / Table 2.3），附录 Figure A1 —— 编号整段保留，只取第一个数字会让各章的图互相覆盖
+    const tag = caption.match(/^(Figure|Fig\.?|Table|Tab\.?)\s*([A-Z]?\d+(?:\.\d+)*)/i);
     const label = tag
-      ? `${/table/i.test(tag[1]) ? "Table" : "Fig"} ${tag[2]}`
+      ? `${/^tab/i.test(tag[1]) ? "Table" : "Fig"} ${tag[2]}`
       : id.replace(/^S\d+\./, "").replace(/^F/, "Fig ").replace(/^T/, "Table ");
     out.push({ id, label, caption, srcs: imgs });
   }
@@ -187,7 +188,8 @@ function resolveAsset(srcAttr) {
 let missingBase = 0;
 
 for (const f of figs) {
-  const num = String(f.label.match(/(\d+)/)?.[1] ?? ++n).padStart(2, "0");
+  const raw = f.label.match(/([A-Z]?\d+(?:\.\d+)*)\s*$/)?.[1] ?? String(++n);
+  const num = /^\d+$/.test(raw) ? raw.padStart(2, "0") : raw.replace(/\./g, "-");
   const kind = /^Table/i.test(f.label) ? "table" : "fig";
   for (let i = 0; i < f.srcs.length; i++) {
     const suffix = f.srcs.length > 1 ? String.fromCharCode(97 + i) : "";

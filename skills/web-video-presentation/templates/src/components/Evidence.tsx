@@ -31,7 +31,7 @@
 //
 //   // in the chapter component
 //   <Evidence step={step} marks={evidence} />
-//   <CitationChip citation={citation} />
+//   (CitationChip is retired — renders nothing; don't mount it.)
 //
 // Evidence lives in its own file — NOT in narrations.ts. extract-narrations.ts
 // throws on any narration that isn't a plain string, and narrations.ts is the
@@ -86,16 +86,9 @@ export function Evidence({ step, marks }: { step: number; marks: EvidenceMark[] 
   );
 }
 
-/** Corner chip naming the paper. Mount it from the first step so the source
- *  is on screen before any claim is — pairs with the cold-open (§2.1). */
-export function CitationChip({ citation }: { citation: Citation }) {
-  return (
-    <div className="ev-citation label-mono">
-      <span className="ev-cit-title">{citation.title}</span>
-      <span className="ev-cit-dot">·</span>
-      <span>{citation.authors}</span>
-      <span className="ev-cit-dot">·</span>
-      <span>{citation.venue}</span>
-    </div>
-  );
+/** Retired: the top-left citation line crowded the chapter title. Kept as a
+ *  no-op so chapters that still mount it compile and render nothing — the
+ *  paper's name / authors / id belong in the cold-open narration instead. */
+export function CitationChip(_props: { citation: Citation }) {
+  return null;
 }

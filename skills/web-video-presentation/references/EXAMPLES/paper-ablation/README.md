@@ -68,7 +68,7 @@
 视觉权重最高——因为它**有数据撑腰**。
 
 badge / locator / citation 走**共享**的 `<Evidence>` class：
-`ev-badge`（配 `data-evidence="fact|supported|infer|background"`）、`ev-locator`、`ev-citation`，
+`ev-badge`（配 `data-evidence="fact|supported|infer|background"`）、`ev-locator`（`ev-citation` 已退役，不挂），
 样式在 `src/styles/evidence.css`，`chapter.css` 里**不再**重复一份。
 
 ## 文件结构

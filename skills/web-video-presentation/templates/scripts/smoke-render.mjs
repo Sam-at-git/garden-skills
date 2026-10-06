@@ -55,6 +55,19 @@ const ONLY_CHAPTER = arg("chapter", null) === null ? null : parseInt(String(arg(
 const SHOTS = arg("shots", false) === true;
 const SETTLE_MS = parseInt(String(arg("settle", "220")), 10);
 const OUT_DIR = path.join(process.cwd(), "render", "smoke");
+// --dom：每步再跑一遍确定性画面检查（dom-check.mjs：重叠 / 裁切 / 窄列 / TeX 残留 / 坏图 / 偏上），
+// 只汇报；--dom-strict 时 fail 级的算进 smoke 失败。--dom-json=<文件> 写出逐步结果（和 visual:review 对照用）。
+// --dom-settle：跑检查前每步等多久（入场动画、Flow / Grid 的过程动画要跑完），默认 1500ms
+const DOM = arg("dom", false) === true || arg("dom-strict", false) === true || !!arg("dom-json", null);
+const DOM_STRICT = arg("dom-strict", false) === true;
+const DOM_JSON = arg("dom-json", null);
+const DOM_SETTLE = parseInt(String(arg("dom-settle", "1500")), 10);
+let DOM_CHECK = null;
+if (DOM) {
+  try { ({ DOM_CHECK } = await import("./dom-check.mjs")); }
+  catch { console.log("! 没有 scripts/dom-check.mjs（老工程的快照），跳过 DOM 检查"); }
+}
+const domResults = [];
 
 /** Sub-resources whose failure must not redden the gate (offline font CDNs, absent audio). */
 const BENIGN = [/fonts\.googleapis\.com/, /fonts\.gstatic\.com/, /\/audio\/.*\.mp3$/, /favicon/];
@@ -174,7 +187,7 @@ process.on("exit", shutdown);
 process.on("SIGINT", () => { shutdown(); process.exit(130); });
 
 /* ── launch ──────────────────────────────────────────────────────────── */
-// 2080×1280 renders the 1920×1080 stage at scale 1.0 (see record-auto.mjs).
+// 2000×1160 renders the 1920×1080 stage at scale 1.0 (see record-auto.mjs).
 const { chromium } = playwright;
 let browser;
 try {
@@ -182,7 +195,7 @@ try {
 } catch {
   browser = await chromium.launch();
 }
-const context = await browser.newContext({ viewport: { width: 2080, height: 1280 }, deviceScaleFactor: 1 });
+const context = await browser.newContext({ viewport: { width: 2000, height: 1160 }, deviceScaleFactor: 1 });
 const page = await context.newPage();
 
 const consoleErrors = [];
@@ -239,7 +252,16 @@ const measureInk = () => page.evaluate(() => {
   const t = scene.innerText?.trim() ?? "";
   text = t.length;
   const primaries = [...scene.querySelectorAll('[data-role="primary"]')].filter(vis);
-  return { scene: true, text, marks, primary: primaries.length, area: Math.round(area) };
+  // 溢出：规格章的内容区（标题 + 积木）超出场景的安全区底边。自动缩放有下限，缩到头还放不下就会被裁，
+  // 以前只有人看图才发现（2609.24220v1 第 5 章第 8/12 步）。
+  let overflow = 0;
+  const sc = scene.querySelector(".sc-scene");
+  if (sc) {
+    const r = sc.getBoundingClientRect(), padB = parseFloat(getComputedStyle(sc).paddingBottom) || 0;
+    const limit = r.bottom - padB * 0.4;
+    sc.querySelectorAll(".sc-scene-head, .sc-spec-fit > *, .sc-body > *, .sc-spec-cell").forEach((e) => { overflow = Math.max(overflow, e.getBoundingClientRect().bottom - limit); });
+  }
+  return { scene: true, text, marks, primary: primaries.length, area: Math.round(area), overflow: Math.round(overflow) };
 });
 
 const cursor = () => page.evaluate(() => window.__presentationCursor?.() ?? null);
@@ -248,8 +270,11 @@ const results = [];
 let fails = 0;
 let warns = 0;
 
-console.log(`▸ smoke-render · ${target} · 2080×1280`);
-await page.goto(target, { waitUntil: "networkidle" });
+console.log(`▸ smoke-render · ${target} · 2000×1160`);
+// 站点托管时播放器默认 auto，会盖一层 AutoStartGate 遮罩：QA 一律显式退回静音手动模式（以前靠 site-patch 补，
+// 模板自己不带 —— DOM 检查的 elementFromPoint 全打在遮罩上，重叠一条都查不出来）
+const qaTarget = target + (target.includes("?") ? "&" : "?") + "auto=0";
+await page.goto(qaTarget, { waitUntil: "networkidle" });
 
 /* ── gate 0: did the app mount at all? ───────────────────────────────── */
 const mounted = await page.evaluate(() => {
@@ -318,15 +343,37 @@ while (true) {
     const shot = path.join(OUT_DIR, `fail-ch${cur.chapter}-step${cur.step}.png`);
     await page.screenshot({ path: shot });
     console.error(`  ✗ ch${cur.chapter} step${cur.step}  空屏（文字 ${ink.text} 字 · 图元 ${ink.marks}）→ ${shot}`);
-  } else if (ink.primary === 0) {
-    warns++;
-    console.log(`  ! ch${cur.chapter} step${cur.step}  没有可见的 [data-role="primary"]`);
-  } else if (SHOTS) {
-    fs.mkdirSync(OUT_DIR, { recursive: true });
-    await page.screenshot({ path: path.join(OUT_DIR, `ch${cur.chapter}-step${cur.step}.png`) });
+  } else {
+    if (ink.overflow > 12) {
+      fails++;
+      fs.mkdirSync(OUT_DIR, { recursive: true });
+      const shot = path.join(OUT_DIR, `fail-ch${cur.chapter}-step${cur.step}.png`);
+      await page.screenshot({ path: shot });
+      console.error(`  ✗ ch${cur.chapter} step${cur.step}  内容超出画面底部 ${ink.overflow}px → ${shot}`);
+    }
+    if (ink.primary === 0) {
+      warns++;
+      console.log(`  ! ch${cur.chapter} step${cur.step}  没有可见的 [data-role="primary"]`);
+    }
+    // --shots 时每一步都留一帧：没有 primary 标记只是 warn，不等于没画面。
+    // （老模板 / 手写的章节不打 data-role，以前这里直接跳过，封面和 contact sheet 全空。）
+    if (SHOTS) {
+      fs.mkdirSync(OUT_DIR, { recursive: true });
+      await page.screenshot({ path: path.join(OUT_DIR, `ch${cur.chapter}-step${cur.step}.png`) });
+    }
   }
 
   results.push({ ...cur, ...ink });
+  if (DOM_CHECK) {
+    if (DOM_SETTLE > SETTLE_MS) await page.waitForTimeout(DOM_SETTLE - SETTLE_MS);
+    const issues = await page.evaluate(DOM_CHECK).catch((e) => [{ rule: "dom-check", sev: "warn", what: String(e).slice(0, 120) }]);
+    domResults.push({ chapter: cur.chapter, step: cur.step, issues });
+    for (const it of issues) {
+      const mark = it.sev === "fail" ? "✗" : "!";
+      console.log(`  ${mark} ch${cur.chapter} step${cur.step} [${it.rule}] ${it.what}`);
+      if (it.sev === "fail" && DOM_STRICT) fails++; else warns++;
+    }
+  }
   visited++;
   if (MAX_STEPS && visited >= MAX_STEPS) break;
   if (prev && prev.chapter === cur.chapter && prev.step === cur.step) break;
@@ -334,6 +381,22 @@ while (true) {
 
   await page.keyboard.press("ArrowRight");
   await page.waitForTimeout(SETTLE_MS);
+}
+
+// 走到末尾后的那次「下一步」会进片尾（EndCredits）：确认它渲染出来了
+if (ONLY_CHAPTER === null && !MAX_STEPS) {
+  await page.waitForTimeout(SETTLE_MS);
+  const ec = await page.evaluate(() => {
+    const el = document.querySelector("[data-credits]");
+    return el ? { text: (el.textContent || "").trim().length } : null;
+  });
+  if (ec && ec.text < 4) {
+    fails++;
+    console.error("  ✗ 片尾是空的");
+  } else if (ec && SHOTS) {
+    fs.mkdirSync(OUT_DIR, { recursive: true });
+    await page.screenshot({ path: path.join(OUT_DIR, "credits.png") });
+  }
 }
 
 await browser.close();
@@ -359,6 +422,11 @@ if (failedRequests.length) {
   for (const e of failedRequests.slice(0, 5)) console.log(`    ${e}`);
 }
 
+if (DOM_CHECK) {
+  const all = domResults.flatMap((r) => r.issues), f = all.filter((i) => i.sev === "fail").length;
+  console.log(`▸ DOM 检查：${f} fail · ${all.length - f} warn${DOM_STRICT ? "" : "（不计入 smoke 结果，--dom-strict 才算）"}`);
+  if (DOM_JSON) fs.writeFileSync(String(DOM_JSON), JSON.stringify(domResults, null, 1));
+}
 console.log("");
 if (fails > 0) {
   console.error(`✗ smoke 失败 · ${fails} fail · ${warns} warn`);

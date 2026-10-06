@@ -2,19 +2,19 @@
   position: fixed;
   top: 0;
   right: 0;
-  width: 160px;
-  height: 60px;
+  width: 260px;
+  height: 96px;
   z-index: 11;
   display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 6px;
   padding: 12px;
   pointer-events: auto;
 }
-.at-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+.at-btn,
+.at-rates {
   background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -22,14 +22,22 @@
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.18em;
-  padding: 8px 14px;
-  border-radius: 0 0 0 8px;
-  cursor: pointer;
   opacity: 0;
   transform: translateY(-100%);
   transition: opacity 280ms ease, transform 280ms ease;
 }
-.at-hover:hover .at-btn {
+.at-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 0 0 0 8px;
+  cursor: pointer;
+}
+.at-hover:hover .at-btn,
+.at-hover:hover .at-rates,
+.at-flash .at-btn,
+.at-flash .at-rates {
   opacity: 1;
   transform: translateY(0);
 }
@@ -50,4 +58,39 @@
 .at-auto .at-dot {
   background: #4ade80;
   box-shadow: 0 0 8px rgba(74, 222, 128, 0.7);
+}
+.at-rate-tag {
+  color: #a1a1aa;
+  letter-spacing: 0.06em;
+}
+
+/* ── speed selector ── */
+.at-rates {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 6px;
+  gap: 2px;
+}
+.at-rate {
+  font: inherit;
+  letter-spacing: 0.04em;
+  color: #a1a1aa;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  padding: 5px 9px;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+.at-rate:hover {
+  color: #f4f4f5;
+  background: rgba(255, 255, 255, 0.08);
+}
+.at-rate-on,
+.at-rate-on:hover {
+  color: #0a0a0a;
+  background: #f4f4f5;
+}
+.at-rates-off .at-rate {
+  opacity: 0.45;
 }

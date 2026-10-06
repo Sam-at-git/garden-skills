@@ -40,7 +40,6 @@ export default function PaperFormulaReveal({ step }: ChapterStepProps) {
   const showFormula = step >= 1;
   return (
     <div className="pf-scene scene-pad" data-composition="asymmetric-60-40">
-      <div className="ev-citation label-mono" data-role="annotation">Paper · RoutingNet · arXiv:2406.07223</div>
       {showFormula && (
         <>
           <span className="ev-badge" data-evidence="fact" data-role="annotation">论文事实</span>

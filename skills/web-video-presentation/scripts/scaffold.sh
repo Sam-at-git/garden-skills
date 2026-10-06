@@ -116,6 +116,7 @@ rm -f \
   src/main.tsx src/index.css \
   src/assets/react.svg \
   public/vite.svg \
+  public/icons.svg \
   README.md
 rmdir src/assets 2>/dev/null || true
 
@@ -137,19 +138,27 @@ cp "$TEMPLATES/src/styles/base.css"         src/styles/base.css
 cp "$TEMPLATES/src/styles/composition.css"  src/styles/composition.css
 cp "$TEMPLATES/src/styles/evidence.css"     src/styles/evidence.css
 cp "$TEMPLATES/src/styles/paper-figure.css" src/styles/paper-figure.css
+cp "$TEMPLATES/src/styles/figure-lens.css"  src/styles/figure-lens.css
 cp "$TEMPLATES/src/styles/animations.css"   src/styles/animations.css
 cp "$TEMPLATES/src/styles/fonts.css"        src/styles/fonts.css
+# 场景组件层（components/scene/* + scene.css）—— App.tsx 引用了它，漏拷会让 build 直接挂
+cp "$TEMPLATES/src/styles/scene.css"        src/styles/scene.css
+cp "$TEMPLATES/src/styles/end-credits.css"  src/styles/end-credits.css
+mkdir -p src/components/scene
+cp "$TEMPLATES/src/components/scene/"*      src/components/scene/
 
 cp "$TEMPLATES/src/hooks/useStageScale.ts"   src/hooks/useStageScale.ts
 cp "$TEMPLATES/src/hooks/useStepper.ts"      src/hooks/useStepper.ts
 cp "$TEMPLATES/src/hooks/useAudioPlayer.ts"  src/hooks/useAudioPlayer.ts
 cp "$TEMPLATES/src/hooks/useAutoMode.ts"     src/hooks/useAutoMode.ts
+cp "$TEMPLATES/src/hooks/usePlaybackRate.ts" src/hooks/usePlaybackRate.ts
 
 cp "$TEMPLATES/src/components/Stage.tsx"          src/components/Stage.tsx
 cp "$TEMPLATES/src/components/MaskReveal.tsx"     src/components/MaskReveal.tsx
 cp "$TEMPLATES/src/components/LayoutDebug.tsx"    src/components/LayoutDebug.tsx
 cp "$TEMPLATES/src/components/Evidence.tsx"       src/components/Evidence.tsx
 cp "$TEMPLATES/src/components/PaperFigure.tsx"    src/components/PaperFigure.tsx
+cp "$TEMPLATES/src/components/FigureLens.tsx"     src/components/FigureLens.tsx
 cp "$TEMPLATES/src/components/ProgressBar.tsx"    src/components/ProgressBar.tsx
 cp "$TEMPLATES/src/components/ProgressBar.css"    src/components/ProgressBar.css
 cp "$TEMPLATES/src/components/AutoStartGate.tsx"  src/components/AutoStartGate.tsx
@@ -160,6 +169,9 @@ cp "$TEMPLATES/src/components/AutoToggle.css"     src/components/AutoToggle.css
 # very first `npm run build` of every new project fail with TS2307.
 cp "$TEMPLATES/src/components/PausedIndicator.tsx" src/components/PausedIndicator.tsx
 cp "$TEMPLATES/src/components/PausedIndicator.css" src/components/PausedIndicator.css
+# 片尾（谢谢收看 + 作者 + 参考文献滚动）；credits.json 是空壳，流水线出片前用真实数据覆盖
+cp "$TEMPLATES/src/components/EndCredits.tsx"   src/components/EndCredits.tsx
+cp "$TEMPLATES/src/credits.json"                src/credits.json
 
 # 论文模式公式渲染（可选，仅 --math）：注入 KaTeX + <Math>/<Formula> 组件 +
 # math.css。不传 --math 时整段跳过 —— 脚手架输出与不传时字节一致。
@@ -175,6 +187,8 @@ if [[ "$MATH" == "1" ]]; then
   fi
   cp "$TEMPLATES/src/styles/math.css"     src/styles/math.css
   cp "$TEMPLATES/src/components/Math.tsx" src/components/Math.tsx
+  # 规格驱动章节的公式槽：有 KaTeX 就换成真渲染版（同名同导出，覆盖 scene/ 里的桩）
+  cp "$TEMPLATES/src/components/MathSlot.katex.tsx" src/components/scene/MathSlot.tsx
 fi
 
 cp "$TEMPLATES/src/registry/types.ts"    src/registry/types.ts
@@ -193,12 +207,24 @@ chmod +x scripts/synthesize-audio.sh
 # Visual QA — static analyzer that catches structural layout problems
 # in chapter TSX/CSS before opening a browser. See references/VISUAL-QA.md.
 cp "$TEMPLATES/scripts/inspect-layout.mjs"     scripts/inspect-layout.mjs
+cp "$TEMPLATES/scripts/spec-check.mjs"         scripts/spec-check.mjs
 
 # Render smoke test — the one gate that actually runs the app. layout:check is
 # pure source analysis and can be fully green while the page renders blank
 # (see the header of smoke-render.mjs for the incident). Needs Playwright at
 # run time only; skips loudly with exit 0 when it isn't installed.
 cp "$TEMPLATES/scripts/smoke-render.mjs"       scripts/smoke-render.mjs
+cp "$TEMPLATES/scripts/dom-check.mjs"          scripts/dom-check.mjs    # smoke --dom 的画面检查
+
+# 内容与视觉层的闸（VISUAL-QA.md §2.6~2.8）：证据层（论文模式）/ 动画预算 / 口播漂移 /
+# 音频验收 / contact sheet / 视觉评审（多模态模型按事故清单看截图）。
+# 以前只有站点 worker 自带，交互式用 skill 时这几类事故没人拦。
+cp "$TEMPLATES/scripts/evidence-check.mjs"     scripts/evidence-check.mjs
+cp "$TEMPLATES/scripts/anim-budget.mjs"        scripts/anim-budget.mjs
+cp "$TEMPLATES/scripts/script-drift.mjs"       scripts/script-drift.mjs
+cp "$TEMPLATES/scripts/audio-check.mjs"        scripts/audio-check.mjs
+cp "$TEMPLATES/scripts/contact-sheet.mjs"      scripts/contact-sheet.mjs
+cp "$TEMPLATES/scripts/visual-review.mjs"      scripts/visual-review.mjs
 
 # Audio measurement + the headless record → mux pipeline (references/RECORDING.md).
 # record-auto/build-video only need ffmpeg + Playwright at RUN time, so they
@@ -253,7 +279,13 @@ p.scripts = Object.assign({}, p.scripts, {
   "synthesize-audio":   "bash scripts/synthesize-audio.sh",
   "layout:check":       "node scripts/inspect-layout.mjs .",
   "smoke":              "node scripts/smoke-render.mjs",
-  "verify":             "npm run layout:check && npm run build && npm run smoke",
+  "evidence:check":     "node scripts/evidence-check.mjs",
+  "anim:budget":        "node scripts/anim-budget.mjs",
+  "script:drift":       "node scripts/script-drift.mjs",
+  "audio:check":        "node scripts/audio-check.mjs",
+  "sheet":              "node scripts/contact-sheet.mjs",
+  "visual:review":      "node scripts/visual-review.mjs",
+  "verify":             "npm run layout:check && npm run evidence:check && npm run anim:budget && npm run script:drift && npm run build && npm run smoke",
   "audio:report":       "node scripts/audio-report.mjs",
   "audio:track":        "node scripts/build-audio-track.mjs",
   "video:record":       "node scripts/record-auto.mjs",
@@ -367,10 +399,17 @@ cat <<EOF
 
 视觉自检（每章完工 / 录屏前必走）：
 
-  • npm run verify              # 一条命令跑完下面三道机器闸
+  • npm run verify              # 一条命令跑完下面六道机器闸
       ├ npm run layout:check    #   结构层：静态分析（含中文裸直引号检测）
+      ├ npm run evidence:check  #   证据层：fact/supported 挂 locator（没有 evidence.ts 时跳过）
+      ├ npm run anim:budget     #   动画时长 ≤ 口播时长（Auto 模式不等动画）
+      ├ npm run script:drift    #   narrations 相对 ../script.md 没缩水（找不到 script.md 时跳过）
       ├ npm run build           #   tsc -b && vite build —— 类型 + 解析错误
       └ npm run smoke           #   运行层：真浏览器逐步走，白屏必红
+  • 画面层（verify 之后，录屏前）：
+      npm run smoke -- --shots --settle=3000   # 每步留一帧
+      npm run sheet                            # 拼成每章一张 contact sheet，人看
+      npm run visual:review                    # 多模态模型按事故清单逐帧评审（要配视觉模型）
   • 浏览器开 http://localhost:5174/?layout=1
                                   # 走一遍英雄帧（视觉层人工检查）
   • 详见 $SKILL_DIR/references/VISUAL-QA.md

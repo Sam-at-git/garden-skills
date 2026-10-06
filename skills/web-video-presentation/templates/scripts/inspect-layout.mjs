@@ -438,6 +438,14 @@ function maxStepRef(jsx) {
  * Extract every `data-composition="..."` attribute value from TSX.
  * In source order. Multiple matches (rare) returned as-is.
  */
+function normalizeSceneProps(src) {
+  return src
+    .replace(/<Scene\b([^>]*?)\bcomposition=("[^"]+")/g, "<Scene$1data-composition=$2")
+    .replace(/<Scene\b([^>]*?)\bstable\b(?!=)/g, '<Scene$1data-composition-stable="true"')
+    .replace(/<Scene\b([^>]*?)\bstable=\{true\}/g, '<Scene$1data-composition-stable="true"')
+    .replace(/\brole=("(?:primary|secondary|background|annotation)")/g, "data-role=$1");
+}
+
 function dataCompositions(jsx) {
   const stripped = stripJsComments(jsx);
   const out = [];
@@ -883,9 +891,60 @@ function pickChapterTsx(folderPath, id) {
 }
 
 // ─── Per-chapter analysis ───
+/**
+ * 规格驱动章节（spec.json + SpecChapter）：画面由数据定义，TSX 只是三行壳、没有章节 CSS。
+ * 同一套契约（构图八选一 / 连续 ≤2 / 每步一个 primary / 步数 = narrations）改从 spec 里读；
+ * CSS 类规则（hex / 字号 / max-width）由渲染器保证，不在这里查。深校验在 scripts/spec-check.mjs。
+ */
+function analyzeSpecChapter(folderPath, id, specPath) {
+  const checks = [];
+  let spec;
+  try { spec = JSON.parse(fs.readFileSync(specPath, "utf8")); }
+  catch (e) { return { id, checks: [{ level: "fail", rule: "spec-invalid-json", detail: `spec.json 不是合法 JSON：${e.message}` }] }; }
+  const steps = Array.isArray(spec.steps) ? spec.steps : [];
+  if (!steps.length) return { id, checks: [{ level: "fail", rule: "spec-empty", detail: "spec.steps 为空" }] };
+
+  const narPath = path.join(folderPath, "narrations.ts");
+  if (!fs.existsSync(narPath)) checks.push({ level: "fail", rule: "narrations-missing", detail: "no narrations.ts" });
+  else {
+    const narLen = countNarrationEntries(fs.readFileSync(narPath, "utf8"));
+    if (narLen !== steps.length) checks.push({ level: "fail", rule: "step-count-mismatch", detail: `narrations has ${narLen} entries but spec has ${steps.length} steps` });
+    else checks.push({ level: "pass", rule: "step-count", detail: `${narLen} steps aligned` });
+  }
+  for (const f of ["narrations.ts", "evidence.ts"]) {
+    const p = path.join(folderPath, f);
+    if (!fs.existsSync(p)) continue;
+    const { broken } = findQuoteHazards(fs.readFileSync(p, "utf8"));
+    if (broken.length > 0) checks.push({ level: "fail", rule: "broken-string-literal", detail: `${f} 第 ${broken.map((b) => b.line).join(" / ")} 行：字符串在中文中间提前结束（ASCII 直引号）→ 白屏。改用全角 “ ”` });
+  }
+
+  const comps = steps.map((s) => s && s.composition);
+  const bad = comps.filter((c) => !COMPOSITIONS.has(c));
+  if (bad.length) checks.push({ level: "fail", rule: "composition-value", detail: `unknown composition(s): ${[...new Set(bad)].join(", ")} — must be one of: ${[...COMPOSITIONS].join(", ")}` });
+  else checks.push({ level: "pass", rule: "composition-value", detail: `compositions: ${[...new Set(comps)].join(", ")}` });
+  let run = 1;
+  for (let i = 1; i < steps.length; i++) {
+    run = comps[i] === comps[i - 1] ? run + 1 : 1;
+    if (run > MAX_CONSECUTIVE_SAME_COMPOSITION && !steps[i].stable) {
+      checks.push({ level: "fail", rule: "composition-variety", detail: `step ${i}: composition「${comps[i]}」已连续 ${run} 步（limit ${MAX_CONSECUTIVE_SAME_COMPOSITION}）；有意的对照系列给该步加 "stable": true` });
+      break;
+    }
+  }
+  const noPrimary = steps.map((s, i) => [(s.blocks || []).filter((b) => b && b.role === "primary").length, i]).filter(([k]) => k !== 1).map(([, i]) => i);
+  if (noPrimary.length) checks.push({ level: "fail", rule: "primary-role", detail: `step ${noPrimary.join(", ")}: role=primary 的积木不是恰好 1 个` });
+  else checks.push({ level: "pass", rule: "data-roles", detail: "每步一个 primary" });
+  const cjk = (s) => [...String(s)].filter((c) => c >= "一" && c <= "鿿").length;
+  const dense = steps.map((s, i) => [JSON.stringify(s.blocks || []).split('"').filter((_, k) => k % 2 === 1).reduce((a, t) => a + cjk(t), 0), i]).filter(([t]) => t > 260).map(([t, i]) => `step ${i}(${t})`);
+  if (dense.length) checks.push({ level: "warn", rule: "high-text-density", detail: `上屏中文过多：${dense.join(", ")}（>260 字/步）—— 拆步或把说明改成图 / 数字` });
+  return { id, checks };
+}
+
 function analyzeChapter(folderPath) {
   const checks = [];
   const id = path.basename(folderPath);
+
+  const specPath = path.join(folderPath, "spec.json");
+  if (fs.existsSync(specPath)) return analyzeSpecChapter(folderPath, id, specPath);
 
   // Find the chapter TSX (see pickChapterTsx for the precedence rules).
   const picked = pickChapterTsx(folderPath, id);
@@ -911,7 +970,9 @@ function analyzeChapter(folderPath) {
     checks.push({ level: "warn", rule: "css-missing", detail: `no ${baseNoExt}.css at ${cssPath}` });
   }
 
-  const tsx = fs.readFileSync(tsxPath, "utf8");
+  // 场景组件层（components/scene）用 props 表达同一套契约：<Scene composition="…" stable> 和 role="primary"。
+  // 静态检查看的是源码，这里把它们规整成 data-* 的写法再分析，规则本身不变。
+  const tsx = normalizeSceneProps(fs.readFileSync(tsxPath, "utf8"));
   const css = fs.existsSync(cssPath) ? fs.readFileSync(cssPath, "utf8") : "";
 
   // 1. narrations.ts presence + step count.
@@ -1045,7 +1106,8 @@ function analyzeChapter(folderPath) {
       checks.push({
         level: "fail",
         rule: "subfloor-font-size",
-        detail: `${subfloor.length} font-size(s) below body-min ${BODY_MIN_PX}px: ${subfloor.slice(0, 3).map((x) => `${x.selector}={${x.value}}`).join(", ")}… — use var(--body-min)`,
+        // 列全（最多 15 个）：只给 3 个加省略号，模型就得自己 grep 找剩下的，一章能多跑五六次命令
+        detail: `${subfloor.length} font-size(s) below body-min ${BODY_MIN_PX}px: ${subfloor.slice(0, 15).map((x) => `${x.selector}={${x.value}}`).join(", ")}${subfloor.length > 15 ? " …" : ""} — set each to ≥${BODY_MIN_PX}px (or var(--body-min))`,
       });
     }
 

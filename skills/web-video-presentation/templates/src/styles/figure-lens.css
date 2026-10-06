@@ -1,0 +1,207 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * figure-lens.css — spotlight / zoom / crop on a paper's own figure.
+ * Pairs with components/FigureLens.tsx · PAPER-INTERPRETATION.md §6.1.1.
+ *
+ * Token-only like paper-figure.css. The wash fades the figure TOWARD the
+ * stage background (--shell), so it reads as "stepped back" on light and
+ * dark themes alike instead of a black vignette on a white paper figure.
+ * Override per chapter with --lens-wash / --lens-ring.
+ * ───────────────────────────────────────────────────────────────────── */
+
+.fl-figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  min-width: 0;
+}
+
+.fl-frame {
+  position: relative;
+  overflow: hidden;
+  flex: none;
+  background: var(--surface-2, #fff);
+  border: var(--bw-1, 1px) solid var(--rule);
+}
+
+/* Whole figure at scale 1; the camera is a transform on this layer. */
+.fl-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.fl-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* The canvas already has the image's aspect — fill, never letterbox. */
+  object-fit: fill;
+  user-select: none;
+}
+
+.fl-wash {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+.fl-wash-fill {
+  fill: var(--lens-wash, color-mix(in srgb, var(--shell, #fff) 78%, transparent));
+}
+
+.fl-ring {
+  position: absolute;
+  box-sizing: border-box;
+  border: 3px solid var(--lens-ring, var(--accent));
+  pointer-events: none;
+}
+
+.fl-chip {
+  position: absolute;
+  left: -3px;
+  bottom: calc(100% + 6px);
+  padding: 2px 12px;
+  white-space: nowrap;
+  font-family: var(--font-display-cn, inherit);
+  font-size: var(--body-min, 20px);
+  line-height: 1.4;
+  color: var(--surface, #fff);
+  background: var(--lens-ring, var(--accent));
+  border-radius: 6px;
+}
+/* No room above → below the ring. No room either side → badge + legend
+   instead (a chip inside the region covered the figure's own caption). */
+.fl-chip-below { bottom: auto; top: calc(100% + 6px); }
+
+/* Number badge on a ring (several regions, or no room for a chip): the text
+   goes to .fl-legend under the frame, so nothing sits on the paper's labels. */
+.fl-badge {
+  position: absolute;
+  left: -16px;
+  top: -16px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--body-min, 20px);
+  line-height: 1;
+  color: var(--surface, #fff);
+  background: var(--lens-ring, var(--accent));
+  box-shadow: 0 0 0 3px var(--surface-2, #fff);
+}
+.fl-badge-in { left: 6px; top: 6px; }
+.fl-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px) var(--space-5, 24px);
+  font-size: max(22px, var(--body-min, 20px));
+  color: var(--text);
+}
+.fl-legend li { display: flex; align-items: center; gap: var(--space-3, 12px); }
+.fl-legend-n {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--body-min, 20px);
+  color: var(--surface, #fff);
+  background: var(--lens-ring, var(--accent));
+}
+
+/* "Where am I" minimap for zoom / crop. */
+.fl-mini {
+  position: absolute;
+  width: clamp(160px, 22%, 280px);
+  background: var(--surface-2, #fff);
+  border: var(--bw-1, 1px) solid var(--rule);
+  box-shadow: 0 6px 24px color-mix(in srgb, #000 18%, transparent);
+  pointer-events: none;
+}
+.fl-mini .fl-img { height: auto; }
+.fl-mini-tl { left: 16px; top: 16px; }
+.fl-mini-tr { right: 16px; top: 16px; }
+.fl-mini-bl { left: 16px; bottom: 16px; }
+.fl-mini-br { right: 16px; bottom: 16px; }
+.fl-mini-box {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--lens-ring, var(--accent));
+  background: color-mix(in srgb, var(--lens-ring, var(--accent)) 14%, transparent);
+}
+
+/* debug: every region, dashed, with id + coordinates. */
+.fl-debug {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px dashed #e5484d;
+  pointer-events: none;
+}
+.fl-debug span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 0 6px;
+  font: 16px/1.4 var(--font-mono, ui-monospace, monospace);
+  color: #fff;
+  background: #e5484d;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fl-frame, .fl-canvas, .fl-ring, .fl-wash, .fl-wash rect, .fl-mini, .fl-mini-box {
+    transition: none !important;
+  }
+}
+
+/* "What the authors want this figure to show" — same look as scene.css .sc-intent,
+   repeated here so FigureLens works in chapters that don't load scene.css. */
+.fl-intent {
+  align-self: stretch;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4, 16px);
+  padding: var(--space-3, 12px) var(--space-5, 24px);
+  border-left: 4px solid var(--lens-ring, var(--accent));
+  background: color-mix(in srgb, var(--lens-ring, var(--accent)) 7%, transparent);
+  font-size: max(24px, var(--body-min, 20px));
+  color: var(--text);
+  line-height: 1.5;
+}
+.fl-intent-label {
+  flex: none;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--body-min, 20px);
+  letter-spacing: 0.12em;
+  color: var(--lens-ring, var(--accent));
+}
+
+/* 2026-10-06：图上不再放任何文字。标签全进 .fl-legend；多区域的编号放在图框外的边距（.fl-holder 的
+   padding）里，和各自的框对齐 —— chip / 徽标贴在图上压字，是 20 篇里 48 条 overlap / clipped 的来源。 */
+.fl-holder { position: relative; }
+.fl-marker {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--body-min, 20px);
+  line-height: 1;
+  color: var(--surface, #fff);
+  background: var(--lens-ring, var(--accent));
+  z-index: 2;
+}
+.fl-legend-bar { flex: none; width: 6px; height: 1.1em; border-radius: 3px; background: var(--lens-ring, var(--accent)); }

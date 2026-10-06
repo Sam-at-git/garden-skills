@@ -1,19 +1,25 @@
 # 视觉 QA（Visual Quality Assurance）
 
-每章完工前、合成音频前、录屏前的**视觉检查机制**。三层：
+每章完工前、合成音频前、录屏前的**视觉检查机制**。四层：
 
 1. **结构检查（机器·静态）** —— `npm run layout:check` 跑 `inspect-layout.mjs`，
    在源码层发现常见翻车（缺 `data-composition`、字号太小、长标题
    无 max-width、相邻 step 重复构图、字号超过安全密度等）
 2. **运行检查（机器·真浏览器）** —— `npm run build` + `npm run smoke`，
    确认**应用真的能跑、每一步真的画出了东西**（§2.5）
-3. **人工检查** —— 开 `?layout=1` debug overlay，逐 step 静态走一遍
-   英雄帧，截图存档
+3. **画面检查（机器·多模态）** —— `smoke --shots` 逐步截图 → `npm run visual:review`
+   让能看图的模型按事故清单逐帧评审（§2.8）。前两层全绿、画面却是错的那一类
+   （中文被挤成窄列、SVG 黑块、柱子离开 0 线、公式源码外露、缺字方框）归它
+4. **人工检查** —— `npm run sheet` 拼 contact sheet 每章扫一眼 + 开 `?layout=1`
+   debug overlay 走英雄帧
 
-三层缺一不可。**第 2 层不是冗余** —— 第 1 层从不加载页面，第 3 层要人眼，
-中间那道「应用是不是白屏」的缺口只有它能堵（§2.5 有事故经过）。
+四层缺一不可。**第 2 层不是冗余** —— 第 1 层从不加载页面，第 3、4 层看的是截图，
+中间那道「应用是不是白屏」的缺口只有它能堵（§2.5 有事故经过）。**第 3 层也不能
+替代第 4 层**：它只拦清单里的事故，拦不住「这一步没讲清楚」「构图没有重点」。
 
-> 三条一次跑完：`npm run verify`
+> 机器闸一次跑完：`npm run verify`（= layout:check + evidence:check + anim:budget
+> + script:drift + build + smoke，§2.6~2.7 的几道没有输入时会**明说跳过**）
+> 画面层：`npm run smoke -- --shots --settle=3000 && npm run sheet && npm run visual:review`
 
 ---
 
@@ -23,8 +29,8 @@
 |---|---|
 | 章节实现完成 | `npm run verify`（= layout:check + build + smoke） + `?layout=1` 走一遍（人工） |
 | 并行 fan-out 收口后 | **`npm run verify` 必跑**，且逐章确认文件齐全 —— 不信 subagent 的 self-report（SKILL.md §2.3） |
-| 所有章节完成，进 Checkpoint Audio | 全章走一遍 `?layout=1` + 截 contact sheet |
-| 音频合成完成，录屏前 | 复跑一次 `npm run verify`（防止合成脚本改动章节 CSS） |
+| 所有章节完成，进 Checkpoint Audio | `smoke --shots` → `npm run visual:review`（fail 改完再评）→ `npm run sheet` 人看一遍 |
+| 音频合成完成，录屏前 | 复跑一次 `npm run verify`（有了真音频，`anim:budget` 按实测时长重核）+ `npm run audio:check` |
 | 录屏前 5 分钟 | 抽查 3~5 个 step 的 `?layout=1` 截图，确认无变化 |
 
 ---
@@ -176,6 +182,81 @@ npm run smoke -- --url=http://localhost:5174/
 
 ---
 
+## 2.6 内容层的三道闸：`evidence:check` / `anim:budget` / `script:drift`
+
+都在 `npm run verify` 里，都是**事故驱动**加进来的 —— 每一道对应一类「其它闸全绿、
+成片却错了」的真实事故。
+
+| 闸 | 核什么 | 没输入时 |
+|---|---|---|
+| `evidence:check` | 论文模式证据层：`fact` / `supported` 必须挂 locator；`infer` / `background` 的 locator 必须是 `null`；step 不越界、不重复。一章有 `evidence.ts` 其它章就都得有 | 没有任何 `evidence.ts` → 跳过（不是论文模式） |
+| `anim:budget` | 章内最长动画（CSS 的 duration + delay）≤ 口播时长。Auto 模式靠 `audio.ended` 推进、**不等动画**，超了就演到一半被切走。有 `public/audio/` 就用实测时长，没有按中文 4 字/秒、其它语言 2.5 词/秒估 | — |
+| `script:drift` | `narrations.ts` 总量相对 `../script.md` 缩水不超过 15%。分章实现时模型会顺手把口播「精简」掉（实测一次掉了 38%，其它闸全绿，成片短三分之一） | 找不到 `script.md` → 跳过；`--script=<路径>` 指定 |
+
+- **跳过 ≠ 通过**，汇报时照实说。无人值守流水线给 `evidence:check` / `script:drift`
+  带 `--require`，没输入直接 fail —— 否则删掉 `evidence.ts` 就能让闸「跳过」。
+- `anim:budget` 只扫 CSS。写在 TSX 里的内联 `animationDelay` / `style={{ transition }}`
+  它看不到。
+- 按章核：`node scripts/evidence-check.mjs --chapter=<目录>`、
+  `node scripts/script-drift.mjs --chapter=<目录> --beat-from=a --beat-to=b`。
+
+## 2.7 `npm run audio:check` —— 音频验收
+
+合成完跑：每段都有 mp3、不是几百字节的失败空壳；章节 id 没有「一个是另一个的后缀」
+（extract-narrations 用 id 当目录名，撞上了整章音频文本错位）；ffprobe 加总出**实测
+成片时长**，写进 `audio-duration.json`。outline 里的时长估算一律以它为准。
+
+## 2.8 `npm run visual:review` —— 画面评审（多模态）
+
+前两层读源码、判白屏，下面这些事故它们**全绿**，以前只能靠人翻 contact sheet：
+
+| 规则 | 严重度 | 典型成因 |
+|---|---|---|
+| `cjk-narrow-column` 中文被挤成窄列 | fail | `max-width` 用了 `ch`（中文宽度被砍半）或 px 给得太窄 |
+| `top-heavy` 内容贴顶、下半屏空白 | fail | grid 场景漏 `align-content: center` |
+| `black-blob` 意外的黑块 / 楔形 | fail | SVG 曲线漏 `fill="none"` |
+| `bar-baseline` 柱子离开 0 线 | fail | 柱名写进了柱子的 slot |
+| `overlap` 字形互相覆盖 | fail | 绝对定位算错、字号放大没改布局 |
+| `clipped` 被画面 / 容器裁掉 | fail | 溢出 1920×1080 或 `overflow: hidden` |
+| `tofu` 缺字方框 | fail | 字体没有这个字形（花体 𝒪、数学符号） |
+| `raw-tex` 公式源码外露 | fail | 公式写成了普通文本，没进 `<Math>` |
+| `broken-image` 裂图 / 空图片框 | fail | 路径错、图没拷进 `public/` |
+| `placeholder` 声明过的缺图占位框 | warn | 原图确实没拿到（进缺图清单，不是代码问题） |
+| `off-center` / `low-contrast` / `empty` | warn | — |
+
+```bash
+npm run smoke -- --shots --settle=3000   # 先截图：render/smoke/ch<N>-step<M>.png（settle 让入场动画走完）
+npm run visual:review                    # 全部章
+npm run visual:review -- --chapter=3     # 只评第 4 章（0 起，和 smoke 一致）
+```
+
+- **两审制**：一审每章一次请求（本章全部截图 + 清单），**跑两遍取并集** —— 单遍会随机
+  漏报；一审报的每条 fail 再单独拿那一帧**独立问三次**「确实存在吗」（先描述实际看到的
+  样子再判断），**过半**才算 fail，否则降成 warn —— 单票二审会附和一审的误报。严重度由
+  规则表决定，模型改不了。`--passes=` / `--votes=` 可调。
+- 实测（MiniMax-M3，已发布的 8 章 86 步 + 一章注入事故的副本）：
+  - 注入黑块 / `ch` 窄列 / TeX 外露，加上原片本来就有的花体 𝒪 缺字方框，共 4 个：调好提示后
+    单遍 4 次运行全部 4/4。
+  - 原片：早期保守的提示报 0 条 fail —— **事后看是漏报，不是干净**；改成「每帧把清单从头过一遍」
+    后报 7 条，人工复核 5 条是真缺陷（小字压在正文上、标题断词加孤立句号、页眉几行互相挤压、
+    整帧只剩左上角、缺字方框），2 条是边界情况，没有明显的误报。
+  - **提示词的两个坑**：规则描述要写具体形状（「曲线和两端连线围出实心月牙形」，只写「黑块」时
+    模型会把粗弯刀当设计）；要明说「每帧把清单从头过一遍、不要只报最显眼的」，否则每遍只报
+    两三条，最先漏掉的是缺字方框这类小处。
+- **模型配置**：OpenAI 兼容接口，模型必须能看图。`VISION_BASE_URL` +
+  `VISION_API_KEY` + `VISION_MODEL`；没配时退回 MiniMax（`MINIMAX_API_KEY` 或
+  `~/.mmx/config.json`，默认 `MiniMax-M3`）。都没有 → **跳过并 exit 0，照实汇报
+  「visual:review 已跳过」**；流水线带 `--require`，没配置 / 一章都没评成 → exit 3。
+- 结论写进 `render/visual-review.json`（每章 issues），终端格式和其它闸一致
+  （`✗` fail / `!` warn），fail 行带截图路径和章节目录，改完重新
+  `smoke --shots` 再评。
+- 成本：一章 ~15 张图一遍约 3~4 万 token；默认两遍 + 三票，整片 8 章约 70 万 token、3~4 分钟（并发 3）。
+- **你自己就能看图时**（交互式 agent 有 Read 图片能力）：照样跑它 —— 独立评审者
+  比自检更不容易放过自己写的东西（见 SKILL.md「硬性自检协议」）；再自己 Read
+  contact sheet 过一遍它不管的构图 / 重点问题。
+
+---
+
 ## 3. `?layout=1` —— 人工检查
 
 打开 URL 时加 `?layout=1`，**所有 step 强制显示静态英雄帧**（禁用
@@ -235,9 +316,13 @@ npm run smoke -- --url=http://localhost:5174/
 > 曾在计划里，但**尚未实现** —— overlay 里没有任何 canvas / 导出代码。
 > 需要存图就用系统截图或浏览器 DevTools 的 "Capture node screenshot"。
 
-### 3.3 怎么用 `?layout=1` 做 contact sheet
+### 3.3 contact sheet
 
-每章录屏前（**手工截图**，见上面的说明）：
+**首选命令**：`npm run smoke -- --shots --settle=3000 && npm run sheet` —— 每章一张
+`render/sheets/ch<N>.png`（3 列网格，标 step 号），一次看完整章。截图是正常播放态
+（入场动画走完），不带 overlay。
+
+要带 overlay 的版本就手工截（见上面的说明）：
 
 ```bash
 mkdir -p presentation/layout-screenshots/01-coldopen

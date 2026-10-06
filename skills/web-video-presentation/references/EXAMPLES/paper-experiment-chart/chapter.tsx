@@ -54,7 +54,6 @@ export default function PaperExperimentChart({ step }: ChapterStepProps) {
 
   return (
     <div className="pe-scene scene-pad" data-composition="split-screen">
-      <div className="ev-citation label-mono" data-role="annotation">Paper · RoutingNet · arXiv:2406.07223</div>
 
       {/* step 1+：数据是实验支持 / Table 2 */}
       {step >= 1 && (

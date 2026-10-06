@@ -1,0 +1,105 @@
+/* 片尾（components/EndCredits.tsx）：谢谢收看 → 作者逐个浮现 → 参考文献匀速上滚、上沿渐隐。
+   整页 5 秒内放完（时间线在 EndCredits.tsx 里算）。全部走主题 token，不引入新色相。 */
+
+.ec-scene {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  padding: var(--safe-top, 80px) var(--safe-side, 96px) var(--safe-bottom, 80px);
+  text-align: center;
+}
+
+.ec-thanks {
+  margin: 0;
+  font-family: var(--font-display-cn, var(--font-display-en));
+  font-size: var(--t-display-2, 120px);
+  line-height: 1.05;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  animation: ec-rise 800ms var(--ease-expo, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+.ec-title {
+  max-width: 1400px;
+  font-family: var(--font-display-en, var(--font-body));
+  font-size: 30px;
+  line-height: 1.35;
+  color: var(--text-2, var(--text));
+  animation: ec-fade 600ms var(--ease-soft, ease) 200ms both;
+}
+
+.ec-block { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+
+.ec-label {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  letter-spacing: var(--track-caps, 0.2em);
+  text-transform: uppercase;
+  color: var(--text-mute);
+  animation: ec-fade 500ms var(--ease-soft, ease) 300ms both;
+}
+
+/* 作者：像片尾字幕一样一个个浮上来 */
+.ec-authors {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 36px;
+  max-width: 1500px;
+}
+.ec-author {
+  font-family: var(--font-body);
+  font-size: 28px;
+  color: var(--text);
+  white-space: nowrap;
+  animation: ec-rise 600ms var(--ease-quart, ease-out) calc(300ms + var(--i, 0) * var(--ec-stagger, 60ms)) both;
+}
+.ec-more { color: var(--text-mute); }
+
+/* 参考文献：固定 6 行的窗口，上沿渐隐；列表从窗口下方匀速滚到最后一条贴下沿后停住 */
+.ec-refs-block { width: min(1500px, 100%); }
+.ec-refs {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 38%, #000 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 38%, #000 100%);
+}
+.ec-refs-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transform: translateY(var(--ec-from));
+  animation: ec-roll var(--ec-roll) linear var(--ec-delay) forwards;
+  will-change: transform;
+}
+.ec-ref {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  height: var(--ec-row);
+  line-height: var(--ec-row);
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: 22px;
+  color: var(--text-2, var(--text));
+}
+.ec-ref-n {
+  flex: none;
+  width: 3.2em;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint, var(--text-mute));
+}
+.ec-ref-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ec-ref-more .ec-ref-t { color: var(--text-mute); font-family: var(--font-mono); font-size: 20px; letter-spacing: 0.06em; }
+
+@keyframes ec-roll { from { transform: translateY(var(--ec-from)); } to { transform: translateY(var(--ec-to)); } }
+@keyframes ec-rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+@keyframes ec-fade { from { opacity: 0; } to { opacity: 1; } }

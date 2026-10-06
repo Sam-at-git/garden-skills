@@ -42,7 +42,6 @@ export default function PaperArchitectureZoom({ step }: ChapterStepProps) {
   return (
     <div className="az-scene scene-pad" data-composition="diagram-canvas">
       {/* 角落常驻出处 chip（paper mode：从 step 0 就挂） */}
-      <div className="ev-citation label-mono" data-role="annotation">Paper · RoutingNet · arXiv:2406.07223</div>
       {/* 证据层 badge（论文事实 + Fig 2） */}
       {EVIDENCE.includes(step) && (
         <>

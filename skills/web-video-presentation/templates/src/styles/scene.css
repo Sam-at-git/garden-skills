@@ -1,0 +1,619 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * scene.css — 场景组件层（components/scene/*）的样式。
+ *
+ * 设计约束（这些就是组件存在的理由）：
+ *   - 所有字号 ≥ var(--body-min)，数字用 tabular；颜色只用 token；不写 hex
+ *   - 柱图基线永远在 0；标签在独立的网格行里，不会把柱子顶离零线
+ *   - 连线画在 SVG 里、坐标由组件算；文字是 HTML，吃 token 和字体
+ *   - 入场只动 opacity / 自身的 scale，不碰定位用的 transform
+ *   - 动画时长用 --dur-* / --ease-* token，primary 的延迟为 0
+ * 类前缀 sc-。章节 CSS 可以覆盖 --sc-* 变量来调尺寸，不要覆盖 .sc-* 的结构。
+ * ───────────────────────────────────────────────────────────────────── */
+
+:root {
+  --sc-label: max(22px, var(--body-min));
+  --sc-body: max(24px, var(--body-min));
+  --sc-code: max(22px, var(--body-min));
+  --sc-stagger: 70ms;
+}
+
+/* ── 通用入场 ── */
+@keyframes sc-rise { from { opacity: 0; translate: 0 18px; } to { opacity: 1; translate: 0 0; } }
+@keyframes sc-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sc-pop  { 0% { opacity: 0; scale: 0.85; } 70% { opacity: 1; scale: 1.03; } 100% { opacity: 1; scale: 1; } }
+@keyframes sc-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes sc-grow-y { from { height: 0; } }
+@keyframes sc-grow-x { from { width: 0; } }
+@property --sc-n { syntax: "<integer>"; inherits: false; initial-value: 0; }
+@keyframes sc-count { from { --sc-n: 0; } }
+
+.sc-in { animation: sc-rise var(--dur-base) var(--ease-quart) both; animation-delay: var(--sc-delay, 0ms); }
+.sc-in-pop { animation: sc-pop var(--dur-base) var(--ease-overshoot) both; animation-delay: var(--sc-delay, 0ms); }
+.sc-stagger > * { animation: sc-rise var(--dur-base) var(--ease-quart) both; animation-delay: calc(var(--sc-delay, 0ms) + var(--i, 0) * var(--sc-stagger)); }
+
+/* ── Scene ── */
+.sc-scene { position: absolute; inset: 0; padding: var(--safe-top, var(--stage-pad-y)) var(--safe-side, var(--stage-pad-x)) var(--safe-bottom, var(--stage-pad-y)); display: flex; flex-direction: column; justify-content: flex-start; gap: var(--space-5); overflow: hidden; }
+.sc-scene.sc-scene-top { justify-content: flex-start; }
+.sc-scene > .sc-scene-head { display: flex; flex-direction: column; gap: var(--space-2); }
+/* 标题上方的 kicker 已退役（Scene 不再渲染）；老工程的 Scene.tsx 同步这份 CSS 后也不显示。卡片里的 .sc-kicker 不受影响 */
+.sc-scene-head > .sc-kicker { display: none !important; }
+.sc-kicker { font-family: var(--font-mono); font-size: var(--sc-label); letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-mute); }
+.sc-title { font-family: var(--font-display-cn); font-size: var(--t-h2); line-height: 1.15; letter-spacing: var(--track-tight); max-width: 1500px; color: var(--text); margin: 0; }
+.sc-title.sc-title-lg { font-size: var(--t-h1); max-width: 1600px; }
+.sc-lead { font-size: var(--sc-body); line-height: 1.5; color: var(--text-2); max-width: 1100px; }
+.sc-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; justify-content: flex-start; }
+/* 用 auto margin 居中而不是 justify-content:center：内容超高时 auto margin 归零、从顶部排起，不会把标题顶出画面（safe center 在 Chromium 的 flex 里没生效） */
+.sc-body > :first-child { margin-top: auto; }
+.sc-body > :last-child { margin-bottom: auto; }
+.sc-row { display: flex; gap: var(--space-7); align-items: stretch; }
+.sc-row > * { flex: 1 1 0; min-width: 0; }
+.sc-note { font-size: var(--sc-label); color: var(--text-mute); line-height: 1.4; }
+
+/* ── Callout ── */
+.sc-callout { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-5) var(--space-7); border-radius: var(--r-card); background: var(--surface-2); border: var(--bw-1) solid var(--rule); }
+.sc-callout-accent { border-left: var(--bw-4) solid var(--accent); }
+.sc-callout-muted { opacity: 0.55; }
+.sc-callout-plain { background: transparent; border-color: transparent; padding-left: 0; padding-right: 0; }
+.sc-callout .sc-callout-title { font-family: var(--font-display-cn); font-size: max(32px, var(--body-min)); line-height: 1.25; color: var(--text); }
+.sc-callout .sc-callout-body { font-size: var(--sc-body); line-height: 1.5; color: var(--text-2); }
+
+/* ── BigNumber ── */
+.sc-bignum { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.sc-bignum-value { font-family: var(--hero-num-font, var(--font-display-en)); font-style: var(--hero-num-style, normal); font-weight: var(--hero-num-weight, 400); letter-spacing: var(--track-tight); line-height: 0.95; color: var(--text); font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: var(--space-2); }
+.sc-bignum-h1 .sc-bignum-value { font-size: var(--t-h1); }
+.sc-bignum-d2 .sc-bignum-value { font-size: var(--t-display-2); }
+.sc-bignum-d1 .sc-bignum-value { font-size: var(--t-display-1); }
+.sc-bignum-accent .sc-bignum-value { color: var(--accent); }
+.sc-bignum-unit { font-size: 0.35em; font-family: var(--font-body); color: var(--text-mute); letter-spacing: 0; font-style: normal; }
+.sc-bignum-count { --sc-n: var(--sc-to, 0); animation: sc-count var(--dur-cinematic) var(--ease-expo) both; animation-delay: var(--sc-delay, 0ms); counter-reset: scn var(--sc-n); }
+.sc-bignum-count::before { content: counter(scn); }
+.sc-bignum-label { font-size: var(--sc-body); color: var(--text-2); }
+.sc-bignum-sub { font-size: var(--sc-label); color: var(--text-mute); font-family: var(--font-mono); }
+.sc-stats { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-7); align-items: start; }
+
+/* ── RevealList ── */
+.sc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-4); counter-reset: scl; }
+.sc-list-item { display: grid; grid-template-columns: 64px 1fr; gap: var(--space-4); align-items: start; padding: var(--space-3) 0; border-top: var(--bw-1) solid var(--rule); transition: opacity var(--dur-base) var(--ease-soft); }
+.sc-list-item:first-child { border-top: 0; }
+.sc-list-num { font-family: var(--font-mono); font-size: var(--sc-label); color: var(--text-mute); padding-top: 6px; }
+.sc-list-title { font-family: var(--font-display-cn); font-size: max(30px, var(--body-min)); line-height: 1.3; color: var(--text); }
+.sc-list-body { font-size: var(--sc-body); line-height: 1.5; color: var(--text-2); margin-top: var(--space-2); }
+.sc-list-item.sc-ghost { opacity: 0.35; }
+.sc-list-item.sc-current .sc-list-num { color: var(--accent); }
+.sc-list-item.sc-hidden { visibility: hidden; }
+
+/* ── CodeBlock ── */
+.sc-code { display: flex; flex-direction: column; border-radius: var(--r-md); background: var(--surface-2); border: var(--bw-1) solid var(--rule); overflow: hidden; max-width: 100%; }
+.sc-code-head { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: var(--sc-label); color: var(--text-mute); padding: var(--space-3) var(--space-5); border-bottom: var(--bw-1) solid var(--rule); letter-spacing: var(--track-caps); }
+.sc-code pre { margin: 0; padding: var(--space-4) 0; font-family: var(--font-mono); font-size: var(--sc-code); line-height: 1.55; color: var(--text); overflow: hidden; white-space: pre; }
+.sc-code-line { display: grid; grid-template-columns: 56px 1fr; padding: 0 var(--space-5) 0 0; }
+.sc-code-line.sc-hl { background: color-mix(in oklab, var(--accent) 14%, transparent); box-shadow: inset var(--bw-4) 0 0 var(--accent); }
+.sc-code-line.sc-dim { opacity: 0.4; }
+.sc-code-ln { text-align: right; padding-right: var(--space-4); color: var(--text-faint); user-select: none; }
+.sc-code-wrap pre { white-space: pre-wrap; }
+
+/* ── Placeholder ── */
+.sc-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-3); border: var(--bw-2) dashed var(--rule); border-radius: var(--r-md); color: var(--text-mute); background: var(--surface-2); }
+.sc-placeholder-label { font-family: var(--font-mono); font-size: var(--sc-label); letter-spacing: var(--track-caps); text-transform: uppercase; }
+.sc-placeholder-note { font-size: var(--sc-body); color: var(--text-2); max-width: 80%; text-align: center; }
+
+/* ── BarChart ── */
+.sc-bars { display: grid; grid-template-rows: auto 1fr auto; gap: var(--space-3); height: var(--sc-chart-h, 520px); }
+.sc-bars-title { font-size: var(--sc-label); font-family: var(--font-mono); color: var(--text-mute); letter-spacing: var(--track-caps); text-transform: uppercase; }
+.sc-bars-plot { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-5); align-items: end; border-bottom: var(--bw-2) solid var(--text-2); padding: 48px var(--sc-ref-pad, var(--space-4)) 0 var(--space-4); min-height: 0; }
+.sc-bars-has-ref { --sc-ref-pad: 200px; }
+.sc-bars-has-ref .sc-bars-labels { padding-right: 200px; }
+.sc-bar-col { position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; }
+/* 数值 / 差值按「柱顶或误差上界」绝对定位，误差线再高也压不到文字 */
+.sc-bar-value { position: absolute; left: 50%; translate: -50% 0; bottom: calc(var(--top, var(--v, 0)) * 100% + 8px); font-family: var(--font-mono); font-size: var(--sc-label); color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; background: var(--surface); padding: 0 4px; z-index: 1; }
+.sc-bar { width: 100%; max-width: var(--sc-bar-w, 140px); height: calc(var(--v, 0) * 100%); background: var(--text-2); border-radius: var(--r-xs) var(--r-xs) 0 0; animation: sc-grow-y var(--dur-slow) var(--ease-expo) both; animation-delay: calc(var(--sc-delay, 0ms) + var(--i, 0) * var(--sc-stagger)); }
+.sc-bar-accent .sc-bar { background: var(--accent); }
+.sc-bar-dim { opacity: 0.35; }
+.sc-bar-whisker { position: absolute; left: 50%; bottom: calc(var(--lo, 0) * 100%); height: calc((var(--hi, 0) - var(--lo, 0)) * 100%); }
+.sc-bar-delta { position: absolute; left: 50%; translate: -50% 0; bottom: calc(var(--top, var(--v, 0)) * 100% + 44px); font-family: var(--font-mono); font-size: var(--sc-label); color: var(--accent); white-space: nowrap; animation: sc-pop var(--dur-base) var(--ease-overshoot) both; animation-delay: calc(var(--sc-delay, 0ms) + 500ms); }
+.sc-bars-labels { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-5); padding: 0 var(--space-4); }
+.sc-bar-label { text-align: center; font-size: var(--sc-label); color: var(--text-2); line-height: 1.3; }
+.sc-bar-label small { display: block; font-size: var(--sc-label); color: var(--text-mute); }
+.sc-bars-ref { position: absolute; left: 0; right: 0; bottom: calc(var(--v, 0) * 100%); border-top: var(--bw-1) dashed var(--text-mute); pointer-events: none; }
+.sc-bars-ref span { position: absolute; right: 0; bottom: 6px; width: 190px; text-align: right; font-family: var(--font-mono); font-size: var(--sc-label); color: var(--text-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-bars { width: 100%; }
+.sc-bar-whisker { border-top: var(--bw-2) solid var(--text); border-bottom: var(--bw-2) solid var(--text); width: 14px; margin-left: -7px; background: linear-gradient(var(--text), var(--text)) center / 2px 100% no-repeat; }
+/* 横向 */
+.sc-bars-h { display: flex; flex-direction: column; gap: var(--space-3); }
+.sc-hbar-row { display: grid; grid-template-columns: var(--sc-hlabel-w, 320px) 1fr 140px; gap: var(--space-4); align-items: center; }
+.sc-hbar-label { font-size: var(--sc-label); color: var(--text-2); text-align: right; }
+.sc-hbar-track { position: relative; height: var(--sc-hbar-h, 40px); border-left: var(--bw-2) solid var(--text-2); }
+.sc-hbar { height: 100%; width: calc(var(--v, 0) * 100%); background: var(--text-2); border-radius: 0 var(--r-xs) var(--r-xs) 0; animation: sc-grow-x var(--dur-slow) var(--ease-expo) both; animation-delay: calc(var(--sc-delay, 0ms) + var(--i, 0) * var(--sc-stagger)); }
+.sc-hbar-value { font-family: var(--font-mono); font-size: var(--sc-label); color: var(--text-2); font-variant-numeric: tabular-nums; }
+
+/* ── Compare ── */
+.sc-compare { display: grid; grid-template-columns: repeat(var(--sc-cols, 2), minmax(0, 1fr)); gap: 0; width: 100%; }
+.sc-compare-col { display: flex; flex-direction: column; gap: var(--space-4); padding: 0 var(--space-7); border-left: var(--bw-1) solid var(--rule); min-width: 0; }
+.sc-compare-col:first-child { border-left: 0; padding-left: 0; }
+.sc-compare-col:last-child { padding-right: 0; }
+.sc-compare-head { font-family: var(--font-display-cn); font-size: max(32px, var(--body-min)); color: var(--text); padding-bottom: var(--space-3); border-bottom: var(--bw-2) solid var(--rule); }
+.sc-compare-accent .sc-compare-head { color: var(--accent); border-bottom-color: var(--accent); }
+.sc-compare-muted { opacity: 0.55; }
+.sc-compare-body { font-size: var(--sc-body); line-height: 1.5; color: var(--text-2); display: flex; flex-direction: column; gap: var(--space-3); flex: 1; }
+.sc-compare-verdict { grid-column: 1 / -1; grid-row: 2; margin-top: var(--space-7); padding-top: var(--space-5); border-top: var(--bw-1) solid var(--rule); font-family: var(--font-display-cn); font-size: max(30px, var(--body-min)); color: var(--accent); text-align: center; }
+
+/* ── Pipeline ── */
+.sc-pipeline { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr auto; align-items: center; gap: var(--space-4); }
+.sc-stage { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4) var(--space-5); border-radius: var(--r-md); border: var(--bw-2) solid var(--rule); background: var(--surface-2); min-width: 0; transition: opacity var(--dur-base) var(--ease-soft); }
+.sc-stage-label { font-family: var(--font-display-cn); font-size: max(26px, var(--body-min)); color: var(--text); line-height: 1.25; }
+.sc-stage-sub { font-size: var(--sc-label); color: var(--text-mute); font-family: var(--font-mono); }
+.sc-stage-active { border-color: var(--accent); box-shadow: 0 0 0 var(--bw-4) color-mix(in oklab, var(--accent) 25%, transparent); }
+.sc-stage-active .sc-stage-label { color: var(--accent); }
+.sc-stage-done { opacity: 0.65; }
+.sc-stage-todo { opacity: 0.35; }
+.sc-stage-arrow { width: 48px; height: 24px; flex: none; }
+.sc-stage-arrow path { fill: none; stroke: var(--text-mute); stroke-width: 2; }
+.sc-stage-arrow polygon { fill: var(--text-mute); }
+
+/* ── DataTable ── */
+.sc-table { border-collapse: collapse; width: 100%; font-size: var(--sc-body); font-variant-numeric: tabular-nums; }
+.sc-table th { text-align: left; font-family: var(--font-mono); font-size: var(--sc-label); letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-mute); padding: var(--space-3) var(--space-4); border-bottom: var(--bw-2) solid var(--text-2); }
+.sc-table td { padding: var(--space-3) var(--space-4); border-bottom: var(--bw-1) solid var(--rule); color: var(--text-2); }
+.sc-table td.sc-num, .sc-table th.sc-num { text-align: right; font-family: var(--font-mono); }
+.sc-table tr.sc-hidden { visibility: hidden; }
+.sc-table tr.sc-hl-row td { color: var(--text); background: color-mix(in oklab, var(--accent) 10%, transparent); }
+.sc-table td.sc-hl-cell { color: var(--accent); font-weight: 700; }
+.sc-table-caption { font-size: var(--sc-label); color: var(--text-mute); font-family: var(--font-mono); margin-top: var(--space-3); }
+
+/* ── Diagram ── */
+.sc-diagram { position: relative; width: min(100%, var(--sc-dg-w, 1400px)); height: auto; max-width: 100%; margin: 0 auto; }
+.sc-diagram-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.sc-edge { fill: none; stroke: var(--text-mute); stroke-width: 3; }
+.sc-edge-active { stroke: var(--accent); stroke-width: 4; }
+.sc-edge-dim { opacity: 0.25; }
+.sc-edge-dashed { stroke-dasharray: 10 8; }
+.sc-edge-draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: sc-draw var(--dur-slow) var(--ease-soft) forwards; animation-delay: calc(var(--sc-delay, 0ms) + var(--i, 0) * var(--sc-stagger)); }
+.sc-edge-head { fill: var(--text-mute); }
+.sc-edge-head-active { fill: var(--accent); }
+.sc-node { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; border-radius: var(--r-md); border: var(--bw-2) solid var(--rule); background: var(--surface-2); padding: var(--space-3) var(--space-4); box-sizing: border-box; transition: opacity var(--dur-base) var(--ease-soft), border-color var(--dur-base) var(--ease-soft); }
+.sc-node-pill { border-radius: var(--r-pill); }
+.sc-node-circle { border-radius: 50%; }
+.sc-node-label { font-family: var(--font-display-cn); font-size: max(24px, var(--body-min)); line-height: 1.2; color: var(--text); }
+.sc-node-sub { font-family: var(--font-mono); font-size: var(--sc-label); color: var(--text-mute); line-height: 1.2; }
+.sc-node-active { border-color: var(--accent); box-shadow: 0 0 0 var(--bw-4) color-mix(in oklab, var(--accent) 25%, transparent); }
+.sc-node-active .sc-node-label { color: var(--accent); }
+.sc-node-done { border-color: var(--text-2); }
+.sc-node-dim { opacity: 0.3; }
+.sc-edge-label { position: absolute; translate: -50% -50%; font-family: var(--font-mono); font-size: var(--sc-label); color: var(--text-mute); background: var(--surface); padding: 2px 8px; border-radius: var(--r-xs); white-space: nowrap; }
+.sc-edge-label-active { color: var(--accent); }
+
+/* ── rich 标记 ── */
+.sc-em { font-style: normal; color: var(--accent); font-weight: 600; }
+.sc-mono { font-family: var(--font-mono); font-size: 0.92em; padding: 0 0.25em; border-radius: var(--r-xs); background: var(--surface-3); }
+.sc-p { margin: 0; font-size: var(--sc-body); line-height: 1.55; color: var(--text-2); }
+.sc-p + .sc-p { margin-top: var(--space-3); }
+
+/* ── Prose / Quote ── */
+.sc-prose { display: flex; flex-direction: column; gap: var(--space-4); max-width: 1500px; }
+.sc-prose p { margin: 0; line-height: 1.5; color: var(--text-2); }
+.sc-prose-body p { font-size: var(--sc-body); max-width: 1100px; }
+.sc-prose-large p { font-family: var(--font-display-cn); font-size: max(40px, var(--body-min)); line-height: 1.35; color: var(--text); max-width: 1400px; letter-spacing: var(--track-snug); }
+.sc-prose-display p { font-family: var(--font-display-cn); font-size: var(--t-h2); line-height: 1.2; color: var(--text); max-width: 1500px; letter-spacing: var(--track-tight); }
+.sc-prose-center { align-items: center; text-align: center; margin: 0 auto; }
+.sc-quote { margin: 0; max-width: 1500px; display: flex; flex-direction: column; gap: var(--space-5); padding-left: var(--space-7); border-left: var(--bw-4) solid var(--accent); }
+.sc-quote-text { margin: 0; font-family: var(--font-display-cn); font-size: max(44px, var(--body-min)); line-height: 1.3; color: var(--text); letter-spacing: var(--track-snug); }
+.sc-quote-by { font-family: var(--font-mono); font-size: var(--sc-label); color: var(--text-mute); letter-spacing: var(--track-caps); }
+
+/* ── Chips ── */
+.sc-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.sc-chip { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: var(--space-3) var(--space-5); border-radius: var(--r-pill); border: var(--bw-2) solid var(--rule); background: var(--surface-2); transition: opacity var(--dur-base) var(--ease-soft), border-color var(--dur-base) var(--ease-soft), background var(--dur-base) var(--ease-soft); }
+.sc-chip-label { font-family: var(--font-mono); font-size: max(24px, var(--body-min)); color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sc-chips-lg .sc-chip-label { font-size: max(34px, var(--body-min)); }
+.sc-chip-sub { font-size: var(--sc-label); color: var(--text-mute); }
+.sc-chip-active { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 12%, var(--surface-2)); box-shadow: 0 0 0 var(--bw-4) color-mix(in oklab, var(--accent) 22%, transparent); }
+.sc-chip-active .sc-chip-label { color: var(--accent); }
+.sc-chip-done { opacity: 0.6; }
+.sc-chip-dim { opacity: 0.3; }
+.sc-chip-arrow { width: 32px; height: 24px; flex: none; }
+.sc-chip-arrow path { stroke: var(--text-mute); stroke-width: 3; }
+.sc-chip-arrow polygon { fill: var(--text-mute); }
+
+/* ── Formula ── */
+.sc-formula { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); }
+.sc-formula-body { font-size: max(48px, var(--body-min)); color: var(--text); line-height: 1.4; text-align: center; }
+.sc-formula-body .katex { font-size: 1.15em; }
+.sc-formula-part { transition: color var(--dur-base) var(--ease-soft), opacity var(--dur-base) var(--ease-soft); }
+.sc-formula-muted { opacity: 0.25; }
+.sc-formula-caption { font-size: var(--sc-body); color: var(--text-2); max-width: 1100px; text-align: center; }
+
+/* ── 公式逐符号讲解（FormulaSlot symbols / active）──
+   式子不拆：当前讲的符号（\htmlClass 包出来的 .fx-s-i）点亮成 accent + 底色，讲过的回到正文色，没讲到的退成淡色。
+   词表逐行出现（未到的行 visibility:hidden 占位，式子不跳）。 */
+.sc-fx { gap: var(--space-5); }
+.sc-fx .sc-formula-body { transition: color var(--dur-base) var(--ease-soft); }
+.sc-fx[data-focus] .sc-formula-body { color: var(--text-faint); }
+.sc-fx [class*="fx-s-"] { transition: color var(--dur-base) var(--ease-soft), background-color var(--dur-base) var(--ease-soft); border-radius: 6px; }
+.sc-fx[data-done~="s0"] .fx-s-0,
+.sc-fx[data-done~="s1"] .fx-s-1,
+.sc-fx[data-done~="s2"] .fx-s-2,
+.sc-fx[data-done~="s3"] .fx-s-3,
+.sc-fx[data-done~="s4"] .fx-s-4,
+.sc-fx[data-done~="s5"] .fx-s-5,
+.sc-fx[data-done~="s6"] .fx-s-6,
+.sc-fx[data-done~="s7"] .fx-s-7,
+.sc-fx[data-done~="s8"] .fx-s-8,
+.sc-fx[data-done~="s9"] .fx-s-9,
+.sc-fx[data-done~="s10"] .fx-s-10,
+.sc-fx[data-done~="s11"] .fx-s-11 { color: var(--text); }
+.sc-fx[data-act~="s0"] .fx-s-0,
+.sc-fx[data-act~="s1"] .fx-s-1,
+.sc-fx[data-act~="s2"] .fx-s-2,
+.sc-fx[data-act~="s3"] .fx-s-3,
+.sc-fx[data-act~="s4"] .fx-s-4,
+.sc-fx[data-act~="s5"] .fx-s-5,
+.sc-fx[data-act~="s6"] .fx-s-6,
+.sc-fx[data-act~="s7"] .fx-s-7,
+.sc-fx[data-act~="s8"] .fx-s-8,
+.sc-fx[data-act~="s9"] .fx-s-9,
+.sc-fx[data-act~="s10"] .fx-s-10,
+.sc-fx[data-act~="s11"] .fx-s-11 { color: var(--accent); background: color-mix(in oklab, var(--accent) 14%, transparent); box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 14%, transparent); }
+.sc-fx-gloss { display: grid; grid-template-columns: 1fr; gap: var(--space-3) var(--space-7); margin: 0; width: min(100%, 1400px); }
+.sc-fx-gloss-2 { grid-template-columns: 1fr 1fr; }
+.sc-fx-row { display: grid; grid-template-columns: minmax(96px, auto) 1fr; align-items: baseline; gap: var(--space-5); padding: var(--space-3) var(--space-4); border-left: var(--bw-4) solid transparent; border-radius: var(--r-md);
+  transition: background-color var(--dur-base) var(--ease-soft), border-color var(--dur-base) var(--ease-soft), opacity var(--dur-base) var(--ease-soft); animation: sc-rise var(--dur-base) var(--ease-quart) both; }
+.sc-fx-row.sc-fx-hidden { visibility: hidden; animation: none; }
+.sc-fx-row.sc-fx-on { background: color-mix(in oklab, var(--accent) 10%, transparent); border-left-color: var(--accent); }
+.sc-fx-sym { font-size: max(34px, var(--body-min)); color: var(--text); text-align: right; white-space: nowrap; }
+.sc-fx-row.sc-fx-on .sc-fx-sym { color: var(--accent); }
+.sc-fx-row dd { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-4); }
+.sc-fx-name { font-size: var(--sc-body); font-weight: 700; color: var(--text); }
+.sc-fx-meaning { font-size: var(--sc-body); color: var(--text-2); }
+.sc-fx-notes { display: flex; flex-direction: column; gap: var(--space-3); width: min(100%, 1400px); }
+.sc-fx-notes p { margin: 0; font-size: var(--sc-body); color: var(--text); line-height: 1.5; animation: sc-rise var(--dur-base) var(--ease-quart) both; }
+.sc-fx-tag { display: inline-block; margin-right: var(--space-4); padding: 0 var(--space-3); font-family: var(--font-mono); font-size: var(--sc-label); letter-spacing: var(--track-caps); color: var(--accent); border: var(--bw-1) solid var(--accent); border-radius: 4px; }
+.sc-spec .sc-fx-name, .sc-spec .sc-fx-meaning, .sc-spec .sc-fx-notes p { font-size: max(28px, var(--body-min)); }
+
+/* ── Figure（PaperFigure 的规格外壳） ── */
+/* 图在上、「作者想说明」在下：以前默认横向 flex，原图被压窄、说明挤成窄列（cjk-narrow-column 的一个来源） */
+.sc-figure { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.sc-figure > .sc-intent { align-self: stretch; }
+.sc-figure .pf-figure { max-width: 100%; }
+
+/* ── SpecChapter 排布 ── */
+.sc-spec { position: absolute; inset: 0; }
+.sc-spec .sc-body { position: relative; }
+.sc-spec-main { display: flex; width: 100%; flex: 0 0 auto; }
+.sc-spec-stack { flex-direction: column; gap: var(--space-7); align-items: stretch; }
+.sc-spec-row { flex-direction: row; gap: var(--space-9); align-items: center; }
+.sc-spec-cell { min-width: 0; flex: 0 0 auto; display: flex; flex-direction: column; justify-content: center; }
+.sc-spec-row .sc-spec-cell > * { width: 100%; }
+.sc-spec-center .sc-spec-stack { align-items: center; text-align: center; }
+.sc-spec-center .sc-scene-head { text-align: center; align-items: center; }
+.sc-spec-center .sc-title, .sc-spec-center .sc-lead { margin-left: auto; margin-right: auto; }
+.sc-spec-center .sc-prose { align-items: center; text-align: center; }
+.sc-spec-center .sc-quote { border-left: 0; padding-left: 0; align-items: center; text-align: center; }
+.sc-spec-center .sc-bignum { align-items: center; }
+.sc-spec-center .sc-bignum-value { justify-content: center; }
+.sc-spec-center .sc-chips { justify-content: center; }
+.sc-spec-bg { position: absolute; inset: 0; display: grid; place-items: center; z-index: var(--depth-bg); opacity: 0.1; pointer-events: none; filter: blur(1px); }
+.sc-spec-bg-item { transform: scale(1.6); }
+.sc-spec-ann { display: flex; gap: var(--space-7); justify-content: space-between; align-items: end; padding-top: var(--space-4); border-top: var(--bw-1) solid var(--rule); font-size: var(--sc-label); color: var(--text-mute); }
+.sc-spec-ann .sc-p, .sc-spec-ann .sc-prose p { font-size: var(--sc-label); color: var(--text-mute); }
+
+/* ── 规格章的密度档：积木是整屏唯一的内容，字号与尺寸整体上调一档，免得 1920 舞台上显得空 ── */
+.sc-spec { --sc-body: max(30px, var(--body-min)); --sc-label: max(24px, var(--body-min)); --sc-chart-h: 600px; --sc-bar-w: 180px; --sc-hbar-h: 52px; }
+.sc-spec .sc-lead { max-width: 1400px; }
+.sc-spec .sc-callout { padding: var(--space-7) var(--space-9); gap: var(--space-4); }
+.sc-spec .sc-callout .sc-callout-title { font-size: max(40px, var(--body-min)); }
+.sc-spec .sc-list-title { font-size: max(36px, var(--body-min)); }
+.sc-spec .sc-list-item { gap: var(--space-5); padding: var(--space-4) 0; }
+.sc-spec .sc-chip { padding: var(--space-4) var(--space-7); }
+.sc-spec .sc-chip-label { font-size: max(32px, var(--body-min)); }
+.sc-spec .sc-chips-lg .sc-chip-label { font-size: max(44px, var(--body-min)); }
+.sc-spec .sc-chip-sub { font-size: max(24px, var(--body-min)); }
+.sc-spec .sc-chip-arrow { width: 44px; height: 30px; }
+.sc-spec .sc-node-label { font-size: max(36px, var(--body-min)); }
+.sc-spec .sc-node-sub { font-size: max(26px, var(--body-min)); }
+.sc-spec .sc-edge-label { font-size: max(26px, var(--body-min)); }
+.sc-spec .sc-edge { stroke-width: 4; } .sc-spec .sc-edge-active { stroke-width: 5; }
+.sc-spec .sc-stage-label { font-size: max(32px, var(--body-min)); }
+.sc-spec .sc-stage { padding: var(--space-5) var(--space-7); }
+.sc-spec .sc-compare-head { font-size: max(40px, var(--body-min)); }
+.sc-spec .sc-table { font-size: max(32px, var(--body-min)); }
+.sc-spec .sc-table th, .sc-spec .sc-table td { padding: var(--space-4) var(--space-5); }
+.sc-spec .sc-bar-label, .sc-spec .sc-bar-value, .sc-spec .sc-hbar-label, .sc-spec .sc-hbar-value { font-size: max(26px, var(--body-min)); }
+.sc-spec .sc-bignum-label { font-size: max(32px, var(--body-min)); }
+.sc-spec .sc-bignum-sub { font-size: max(24px, var(--body-min)); }
+.sc-spec .sc-prose-large p { font-size: max(46px, var(--body-min)); }
+.sc-spec .sc-quote-text { font-size: max(52px, var(--body-min)); }
+.sc-spec .sc-code { font-size: max(26px, var(--body-min)); }
+.sc-spec .sc-spec-ann, .sc-spec .sc-spec-ann .sc-p, .sc-spec .sc-spec-ann .sc-prose p { font-size: max(26px, var(--body-min)); }
+/* 英雄 / 层叠构图：标题和内容作为一组居中，而不是标题贴顶、内容悬在中间 */
+/* 居中构图也让 body 占满剩余高度（自动缩放要量得到可用高度），居中靠子元素的 auto margin */
+.sc-spec-center.sc-scene { gap: var(--space-9); }
+.sc-spec-rest { margin-top: var(--space-7); }
+
+/* ── 步内焦点：焦点随口播推进在积木 / 条目间移动 ──
+   每个焦点目标带 --on / --off（占本步时长的比例，0~1），本步时长来自 .scene 的 --sc-step-dur（音频真值或估算）。
+   on 时点亮，off 时退回；最后一个目标不退。只动颜色 / 边框 / 轻微缩放，不碰定位。 */
+@keyframes sc-focus-on  { to { --sc-f: 1; } }
+@keyframes sc-focus-off { to { --sc-f: 0; } }
+@property --sc-f { syntax: "<number>"; inherits: false; initial-value: 0; }
+.sc-focus { --sc-f: 0; animation-name: sc-focus-on, sc-focus-off; animation-duration: var(--dur-base), var(--dur-base); animation-timing-function: var(--ease-soft), var(--ease-soft); animation-fill-mode: both, both;
+  animation-delay: calc(var(--sc-step-dur, 20000ms) * var(--on, 0)), calc(var(--sc-step-dur, 20000ms) * var(--off, 2)); }
+.sc-focus-hold { --off: 2; }  /* off 落在步时长之外 = 不退 */
+/* 焦点目标的视觉：边框 / 底色 / 文字色随 --sc-f 插值；scale 只做 1~1.02 的呼吸 */
+.sc-spec-cell.sc-focus > * { transition: none; }
+/* 单元级焦点不画外框：单元常是整屏宽，外框看起来像两条横贯全屏的线压在内容上（05 章第 1/8 步）。焦点只作用在积木自身 */
+.sc-spec-cell.sc-focus { }
+.sc-spec-cell.sc-focus .sc-callout { border-color: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 100%), var(--rule)); background: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 14%), var(--surface-2)); border-left-width: var(--bw-4); border-left-color: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 100%), var(--rule)); }
+.sc-spec-cell.sc-focus .sc-callout-title, .sc-spec-cell.sc-focus .sc-prose p, .sc-spec-cell.sc-focus .sc-quote-text { color: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 100%), var(--text)); }
+.sc-spec-cell.sc-focus .sc-bignum-value { color: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 100%), var(--text)); }
+.sc-chip.sc-focus { border-color: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 100%), var(--rule)); background: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 18%), var(--surface-2)); box-shadow: 0 0 0 calc(var(--sc-f) * var(--bw-4)) color-mix(in oklab, var(--accent) 22%, transparent); }
+.sc-chip.sc-focus .sc-chip-label { color: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 100%), var(--text)); }
+.sc-stage.sc-focus { border-color: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 100%), var(--rule)); box-shadow: 0 0 0 calc(var(--sc-f) * var(--bw-4)) color-mix(in oklab, var(--accent) 25%, transparent); opacity: 1; }
+.sc-stage.sc-focus .sc-stage-label { color: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 100%), var(--text)); }
+.sc-list-item.sc-focus { background: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 14%), transparent); border-radius: var(--r-md); }
+.sc-list-item.sc-focus .sc-list-title { color: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 100%), var(--text)); }
+.sc-list-item.sc-focus .sc-list-num { color: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 100%), var(--text-mute)); }
+.sc-compare-col.sc-focus { background: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 14%), transparent); border-left-color: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 100%), var(--rule)); border-left-width: var(--bw-4); }
+.sc-compare-col.sc-focus .sc-compare-head { color: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 100%), var(--text)); border-bottom-color: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 100%), var(--rule)); }
+.sc-bignum.sc-focus .sc-bignum-value { color: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 100%), var(--text)); scale: calc(1 + var(--sc-f) * 0.04); transform-origin: left center; }
+.sc-table tr.sc-focus td { background: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 16%), transparent); color: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 100%), var(--text-2)); }
+
+/* ── 防「挤在左边一小块」：并排时主块至少占一半；堆叠时窄积木（药丸 / 数字 / 图 / 公式）居中，文字类积木撑满 ── */
+.sc-spec-row .sc-spec-primary { min-width: 52%; }
+.sc-spec-stack > .sc-spec-cell { align-items: center; }
+.sc-spec-stack > .sc-spec-cell > * { width: 100%; }
+.sc-spec-stack > .sc-spec-cell > .sc-chips, .sc-spec-stack > .sc-spec-cell > .sc-bignum, .sc-spec-stack > .sc-spec-cell > .sc-stats,
+.sc-spec-stack > .sc-spec-cell > .sc-figure, .sc-spec-stack > .sc-spec-cell > .sc-diagram, .sc-spec-stack > .sc-spec-cell > .sc-formula,
+.sc-spec-stack > .sc-spec-cell > .sc-placeholder, .sc-spec-stack > .sc-spec-cell > .sc-quote { width: auto; max-width: 100%; }
+.sc-spec-stack > .sc-spec-cell > .sc-stats { width: 100%; }
+.sc-spec-stack > .sc-spec-cell > .sc-chips { justify-content: center; }
+/* 修正：堆叠单元里 Diagram 不能是 width:auto（绝对定位子元素撑不出宽度，aspect-ratio 会把它算成 0×0） */
+.sc-spec-stack > .sc-spec-cell > .sc-diagram { width: min(100%, var(--sc-dg-w, 1400px)); }
+/* 论文图在规格章里永远占满所属单元的宽度，图片按 contain 缩在框里；否则固定高度会让图片按自然宽度撑出栏位盖住邻居 */
+.sc-figure { width: 100%; }
+.sc-figure > .pf-figure { width: 100%; max-width: 100%; }
+.sc-spec-stack > .sc-spec-cell > .sc-figure { width: 100%; }
+
+/* 三块以上同屏：间距压紧、注释行的卡片做成紧凑版，给主内容让高度 */
+.sc-spec-dense .sc-spec-stack { gap: var(--space-4); }
+.sc-spec-dense .sc-spec-rest { margin-top: var(--space-4); }
+.sc-spec-dense .sc-spec-ann { padding-top: var(--space-3); }
+.sc-spec-dense .sc-spec-ann .sc-callout { padding: var(--space-3) var(--space-5); gap: var(--space-2); }
+.sc-spec-dense .sc-spec-ann .sc-callout .sc-callout-title { font-size: max(28px, var(--body-min)); }
+.sc-spec-dense .sc-spec-ann .sc-callout .sc-callout-body { font-size: max(24px, var(--body-min)); }
+.sc-spec-dense.sc-scene { gap: var(--space-4); }
+
+/* ── 2026-09-25 第二轮：溢出 / 重叠 / 灰化 ── */
+/* 堆叠单元一律撑满宽度（以前居中时按内容收缩，框图宽度算成 0，节点全摞在一列）；窄积木在单元内部居中 */
+.sc-spec-stack > .sc-spec-cell { align-self: stretch; width: 100%; align-items: center; }
+.sc-spec-fit { width: 100%; display: flex; flex-direction: column; flex: 0 0 auto; }
+.sc-body:has(> .sc-spec-fit) { overflow: hidden; }
+/* 框图：外层撑满、内层固定像素画布由 JS zoom 缩放 */
+.sc-diagram-fit { width: 100%; display: flex; justify-content: center; min-width: 0; }
+.sc-spec-stack > .sc-spec-cell > .sc-diagram-fit { width: 100%; }
+.sc-diagram-fit > .sc-diagram { width: auto; max-width: none; margin: 0; flex: none; }
+.sc-node { transform: translateY(-50%); height: auto; }
+.sc-node-label { white-space: pre-line; overflow-wrap: anywhere; }
+/* 列表：规格章默认不灰化已讲过的项（同一级信息），当前项用强调色竖条 + 编号标出 */
+.sc-list-item.sc-current { box-shadow: inset var(--bw-4) 0 0 var(--accent); padding-left: var(--space-3); }
+.sc-list-item.sc-current .sc-list-title { color: var(--text); }
+.sc-spec .sc-diagram .sc-node-label { font-size: var(--sc-node-fs, max(36px, var(--body-min))); }
+.sc-spec .sc-diagram .sc-node-sub { font-size: calc(var(--sc-node-fs, 36px) * 0.72); }
+.sc-spec .sc-diagram .sc-node { padding: 6px 10px; }
+
+/* ── 代码逐段解读（CodeBlock notes / active / vars）──
+   左代码、右注释栏：注释框绝对定位、对齐到被讲的第一行，换段时滑过去；变量表钉在注释栏底部，变了的值闪一下。 */
+.sc-codewalk { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 30%); grid-template-areas: "code rail" "vars rail"; gap: var(--space-4) var(--space-5); align-items: stretch; width: 100%; }
+.sc-codewalk > .sc-code { grid-area: code; width: 100%; margin: 0; }
+.sc-codewalk > .sc-code-rail { grid-area: rail; }
+.sc-codewalk > .sc-code-vars { grid-area: vars; }
+.sc-code-rail { display: flex; flex-direction: column; gap: var(--space-4); min-height: 100%; }
+.sc-code-notes { position: relative; flex: 1 1 auto; min-height: 160px; }
+.sc-code-note { position: absolute; left: 0; right: 0; padding: var(--space-4) var(--space-5); background: var(--surface-2); border: var(--bw-1) solid var(--rule); border-left: var(--bw-4) solid var(--accent); border-radius: var(--r-md);
+  transition: top var(--dur-slow, 600ms) var(--ease-quart); animation: sc-fade var(--dur-base) var(--ease-soft) both; }
+.sc-code-note::before { content: ""; position: absolute; left: calc(-1 * var(--space-5) - var(--bw-4)); top: 22px; width: var(--space-5); border-top: var(--bw-2) solid var(--accent); }
+.sc-code-note-lines { font-family: var(--font-mono); font-size: var(--sc-label); letter-spacing: var(--track-caps); color: var(--accent); }
+.sc-code-note-title { font-size: var(--sc-body); font-weight: 700; color: var(--text); margin-top: var(--space-2); }
+.sc-code-note-text { font-size: var(--sc-body); color: var(--text-2); line-height: 1.5; margin-top: var(--space-2); }
+.sc-code-vars { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-7); border: var(--bw-1) solid var(--rule); border-radius: var(--r-md); padding: var(--space-3) var(--space-5); background: var(--surface-2); }
+.sc-code-vars-head { font-family: var(--font-mono); font-size: var(--sc-label); letter-spacing: var(--track-caps); color: var(--text-mute); }
+.sc-code-var { display: flex; gap: var(--space-3); font-family: var(--font-mono); font-size: var(--sc-code); padding: 2px 0; }
+.sc-code-var-name::after { content: " ="; }
+.sc-code-var-name { color: var(--text-mute); }
+.sc-code-var-val { color: var(--text); font-variant-numeric: tabular-nums; }
+@keyframes sc-flash { 0% { background: color-mix(in oklab, var(--accent) 30%, transparent); } 100% { background: transparent; } }
+.sc-code-var.sc-changed .sc-code-var-val { color: var(--accent); animation: sc-flash 1.2s var(--ease-soft) both; border-radius: 4px; }
+.sc-code-line { transition: opacity var(--dur-base) var(--ease-soft), background-color var(--dur-base) var(--ease-soft); }
+.sc-spec .sc-code-note-title, .sc-spec .sc-code-note-text { font-size: max(28px, var(--body-min)); }
+.sc-spec .sc-code pre, .sc-spec .sc-code-var { font-size: max(28px, var(--body-min)); }
+.sc-spec .sc-code-line { grid-template-columns: 64px 1fr; }
+
+/* ── 表格多处高亮 + 作者意图 ── */
+.sc-table td, .sc-table th { transition: opacity var(--dur-base) var(--ease-soft), background-color var(--dur-base) var(--ease-soft), color var(--dur-base) var(--ease-soft); }
+.sc-table td.sc-hl-col { color: var(--text); background: color-mix(in oklab, var(--accent) 10%, transparent); }
+.sc-table th.sc-hl-colhead { color: var(--accent); border-bottom-color: var(--accent); }
+.sc-table td.sc-hl-cell { position: relative; box-shadow: inset 0 0 0 var(--bw-2) var(--accent); background: color-mix(in oklab, var(--accent) 14%, transparent); }
+.sc-table td.sc-dim-cell { opacity: 0.32; }
+.sc-cell-note { margin-left: var(--space-3); font-family: var(--font-mono); font-size: var(--sc-label); color: var(--accent); font-weight: 700; }
+.sc-intent { display: flex; align-items: baseline; gap: var(--space-4); margin-top: var(--space-5); padding: var(--space-3) var(--space-5); border-left: var(--bw-4) solid var(--accent); background: color-mix(in oklab, var(--accent) 7%, transparent); border-radius: 0 var(--r-md) var(--r-md) 0; animation: sc-rise var(--dur-base) var(--ease-quart) both; animation-delay: 240ms; }
+.sc-intent-label { flex: none; font-family: var(--font-mono); font-size: var(--sc-label); letter-spacing: var(--track-caps); color: var(--accent); }
+.sc-intent-text { font-size: var(--sc-body); color: var(--text); line-height: 1.5; }
+.sc-intent-caveat { border-left-color: var(--text-mute); background: color-mix(in oklab, var(--text-mute) 8%, transparent); }
+.sc-intent-caveat .sc-intent-label { color: var(--text-mute); }
+.sc-spec .sc-intent-text { font-size: max(30px, var(--body-min)); }
+.sc-with-intent { display: flex; flex-direction: column; width: 100%; }
+
+/* 公式超宽时整体等比缩小（FormulaSlot 的 useFitZoom 量这一层的宽度） */
+.sc-formula-fit { max-width: 100%; min-width: 0; display: flex; justify-content: center; overflow: hidden; }
+.sc-formula { max-width: 100%; min-width: 0; }
+
+/* ── Grid：同一张网格扩大点亮范围（scope-expand）。颜色只用 accent 的深浅：idle 浅、done 中、lit 深 ── */
+.sc-grid { display: flex; flex-direction: column; align-items: center; gap: var(--space-5); width: 100%; min-width: 0; }
+.sc-grid-svg { display: block; max-width: 100%; height: auto; }
+.sc-grid-cell { fill: color-mix(in oklab, var(--text) 9%, var(--surface)); transition: fill var(--dur-base) var(--ease-soft); }
+.sc-grid-done { fill: color-mix(in oklab, var(--accent) 38%, var(--surface)); }
+.sc-grid-lit { fill: var(--accent); }
+/* 只动 fill-opacity：关键帧里写 color-mix(var()) 在等待期会算成非法值、格子发黑 */
+@keyframes sc-grid-on { from { fill-opacity: 0.12; } }
+.sc-grid-new { animation: sc-grid-on 260ms var(--ease-soft) both; }
+.sc-grid-caption { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); text-align: center; animation: sc-fade var(--dur-base) var(--ease-soft) both; }
+.sc-grid-label { font-size: max(34px, var(--body-min)); color: var(--text); line-height: 1.3; }
+.sc-grid-sub { font-size: var(--sc-label); color: var(--text-2); }
+
+/* ── Flow：数据包沿轨道一趟趟跑（trip-count / 延迟 vs 带宽）。用 left 走位，不碰 transform；跑完定格，不循环 ── */
+/* 所有轨道共用一套列（subgrid）：计数文字长短不同也不许把某条轨道挤短 —— 轨道等长 + 时长相同 = 速度相同（控制变量） */
+.sc-flow { display: grid; grid-template-columns: 200px minmax(0, 1fr) 200px minmax(200px, max-content); column-gap: var(--space-4); row-gap: var(--space-7); width: 100%; min-width: 0; }
+.sc-flow-lane { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; }
+.sc-flow-dim { opacity: 0.5; }
+.sc-flow-end { min-height: 96px; display: flex; align-items: center; justify-content: center; text-align: center; padding: var(--space-3); border-radius: var(--r-md); font-size: var(--sc-body); line-height: 1.25; box-sizing: border-box; }
+.sc-flow-from { background: color-mix(in oklab, var(--accent) 16%, var(--surface-2)); color: var(--text); border: var(--bw-2) solid color-mix(in oklab, var(--accent) 35%, var(--rule)); }
+.sc-flow-to { background: var(--text); color: var(--surface); }
+.sc-flow-track-wrap { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.sc-flow-track { position: relative; height: 76px; border-top: var(--bw-2) solid var(--text-2); border-bottom: var(--bw-2) solid var(--text-2); background: color-mix(in oklab, var(--text) 4%, var(--surface)); }
+.sc-flow-label { font-size: var(--sc-label); color: var(--text-2); text-align: center; }
+.sc-flow-packet { --pw: 22px; position: absolute; top: 50%; translate: 0 -50%; left: 0; width: var(--pw); display: flex; flex-direction: column; align-items: center; gap: 4px;
+  animation: sc-flow-go var(--sc-trip, 700ms) var(--ease-soft) both; }
+.sc-flow-packet i { display: block; width: 18px; height: 14px; border-radius: 3px; background: var(--accent); }
+.sc-flow-tagged { --pw: 72px; height: 50px; justify-content: center; border-radius: var(--r-pill); background: var(--accent); color: var(--surface); font-family: var(--font-mono); font-size: var(--sc-label); }
+.sc-flow-tagged.sc-flow-back { background: var(--surface); color: var(--accent); box-shadow: inset 0 0 0 var(--bw-2) var(--accent); }
+.sc-flow-rest { animation-name: sc-flow-go-rest; }
+.sc-flow-back { animation-name: sc-flow-back; }
+.sc-flow-back.sc-flow-rest { animation-name: sc-flow-back-rest; }
+@keyframes sc-flow-go { 0% { left: 0; opacity: 0; } 10% { opacity: 1; } 86% { opacity: 1; } 100% { left: calc(100% - var(--pw)); opacity: 0; } }
+@keyframes sc-flow-go-rest { 0% { left: 0; opacity: 0; } 10% { opacity: 1; } 100% { left: calc(100% - var(--pw)); opacity: 1; } }
+@keyframes sc-flow-back { 0% { left: calc(100% - var(--pw)); opacity: 0; } 10% { opacity: 1; } 86% { opacity: 1; } 100% { left: 0; opacity: 0; } }
+@keyframes sc-flow-back-rest { 0% { left: calc(100% - var(--pw)); opacity: 0; } 10% { opacity: 1; } 100% { left: 0; opacity: 1; } }
+.sc-flow-count { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+.sc-flow-ticks { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; }
+.sc-flow-ticks i { display: block; width: 10px; height: 28px; border-radius: 2px; background: var(--accent); }
+.sc-flow-tick-new { animation: sc-fade 200ms var(--ease-soft) both; }
+.sc-flow-total { font-family: var(--font-mono); font-size: var(--sc-body); color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sc-flow-total-new { animation: sc-rise var(--dur-base) var(--ease-quart) both; }
+
+/* ── Gauge：输入（正方形边长 ∝ value/max）+ 有上限的容器（scale-sweep）。入场用 backwards，之后跨步变化走 transition ── */
+.sc-gauge { display: flex; align-items: flex-end; justify-content: center; gap: var(--space-7); width: 100%; min-width: 0; }
+.sc-gauge-input, .sc-gauge-tank-col { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); min-width: 0; }
+/* 容量列定宽：读数从「0.06 GB」变到「144 GB · 超出上限」时左边的正方形不许跟着挪 */
+.sc-gauge-tank-col { width: 260px; flex: none; }
+.sc-gauge-cap { font-size: var(--sc-label); color: var(--text-2); text-align: center; }
+.sc-gauge-box { width: var(--sc-g, 380px); height: var(--sc-g, 380px); display: flex; align-items: flex-end; justify-content: flex-start; border-left: var(--bw-1) dashed var(--rule); border-bottom: var(--bw-1) dashed var(--rule); box-sizing: border-box; }
+.sc-gauge-box-bar { height: 72px; }
+@keyframes sc-gauge-w { from { width: 0; } }
+@keyframes sc-gauge-h { from { height: 0; } }
+.sc-gauge-sq { width: max(calc(var(--r, 0) * 100%), 6px); aspect-ratio: 1; background: color-mix(in oklab, var(--accent) 55%, var(--surface)); transition: width var(--dur-slow) var(--ease-quart); animation: sc-gauge-w var(--dur-slow) var(--ease-expo) backwards; animation-delay: var(--sc-delay, 0ms); }
+.sc-gauge-bar { height: 100%; width: max(calc(var(--r, 0) * 100%), 6px); background: color-mix(in oklab, var(--accent) 55%, var(--surface)); transition: width var(--dur-slow) var(--ease-quart); animation: sc-gauge-w var(--dur-slow) var(--ease-expo) backwards; animation-delay: var(--sc-delay, 0ms); }
+.sc-gauge-in-label { font-size: var(--sc-body); color: var(--text); text-align: center; }
+.sc-gauge-factors { align-self: center; font-family: var(--font-mono); font-size: var(--sc-body); color: var(--text-2); white-space: nowrap; }
+.sc-gauge-tank { width: 132px; height: var(--sc-g, 380px); border: var(--bw-2) solid var(--text-2); border-radius: var(--r-sm); display: flex; align-items: flex-end; overflow: hidden; box-sizing: border-box; }
+.sc-gauge-fill { width: 100%; height: calc(var(--f, 0) * 100%); background: var(--accent); transition: height var(--dur-slow) var(--ease-quart); animation: sc-gauge-h var(--dur-slow) var(--ease-expo) backwards; animation-delay: var(--sc-delay, 0ms); }
+.sc-gauge-read { display: flex; flex-direction: column; align-items: center; gap: var(--space-1, 4px); white-space: nowrap; font-size: max(32px, var(--body-min)); color: var(--text); font-variant-numeric: tabular-nums; animation: sc-fade var(--dur-base) var(--ease-soft) both; }
+.sc-gauge-over .sc-gauge-tank { border-color: var(--accent); box-shadow: 0 0 0 var(--bw-4) color-mix(in oklab, var(--accent) 25%, transparent); }
+.sc-gauge-over-tag { font-size: var(--sc-label); color: var(--accent); }
+
+
+/* ── 2026-10-06 版面收敛：窄列 + 偏上（17 篇视觉评审第一轮 41 条窄列、24 条偏上，几乎每篇都有）── */
+/* 三栏不给主角保底 52%：以前另外两栏只剩 ~24%，40px 标题一行 5~6 个字、被拆成竖列 */
+.sc-spec-row.sc-spec-row-n3 { gap: var(--space-7); }
+.sc-spec-row.sc-spec-row-n3 > .sc-spec-primary { min-width: 0; }
+/* 底部注释行铺满：以前沿用正文 p 的 max-width 1100px，一行字在六成宽处就折了 */
+.sc-spec-ann > * { flex: 1 1 auto; min-width: 0; }
+.sc-spec-ann .sc-p, .sc-spec-ann .sc-prose p { max-width: none; }
+/* 不留孤字：卡片够宽、最后一行却只剩「一层」「第二」两个字（窄列里很大一部分是这种） */
+.sc-spec :is(.sc-title, .sc-callout-title, .sc-quote-text, .sc-list-title) { text-wrap: balance; }
+.sc-spec :is(.sc-lead, .sc-callout-body, .sc-p, .sc-prose p, .sc-intent-text, .sc-list-body, .sc-bignum-label, .sc-bignum-sub) { text-wrap: pretty; }
+/* 偏上：标题压在顶部、内容在剩下的区域上下等分空白，整屏重心偏高；注释行紧跟内容，底部更空。
+   改成内容区填满主体，空白按上 3 下 2 分（内容略往下沉），annotation 落到底部一行（和 SPEC-AUTHORING 的约定一致）。
+   useFitZoom 量的是这一层的 scrollHeight，填满后只有真溢出才缩 */
+.sc-spec .sc-body > .sc-spec-fit { flex: 1 1 auto; min-height: 0; margin: 0; }
+.sc-spec-fit::before { content: ""; flex: 3 1 0; order: 0; }
+.sc-spec-fit::after { content: ""; flex: 2 1 0; order: 2; }
+.sc-spec-fit > .sc-spec-main { order: 1; }
+.sc-spec-fit > .sc-spec-ann { order: 3; margin-top: var(--space-5); }
+/* RevealList 未出现的项：以前整项隐形占位，第一步中间空一大块。现在留淡编号和分隔线，空位看得出是「后面还有」 */
+.sc-spec .sc-list-item.sc-hidden { visibility: visible; }
+.sc-spec .sc-list-item.sc-hidden > div { visibility: hidden; }
+.sc-spec .sc-list-item.sc-hidden .sc-list-num { opacity: 0.3; }
+/* texLite 渲染出来的上下标：默认 smaller 会跌破 body-min（inspect-layout 的最小字号闸），也别把行距撑开 */
+.sc-spec :is(sub, sup) { font-size: max(0.75em, var(--body-min)); line-height: 0; }
+/* 公式缩到下限还放不下：左对齐，只裁右边（居中时两头都裁，「L(θ) =」开头丢了最难读） */
+.sc-formula-fit:has(> [data-over="1"]) { justify-content: flex-start; }
+/* 柱图负值（.sc-bars-neg）：零线在 --z 处，柱子从 --b 起画 --v 高；正值的数字在柱顶，负值的在柱底下方 */
+.sc-bars-neg .sc-bars-plot { border-bottom: 0; }
+.sc-bars-neg .sc-bars-plot::after { content: ""; position: absolute; left: 0; right: 0; bottom: calc(var(--pb, 0px) + var(--z, 0) * (100% - 48px - var(--pb, 0px))); border-top: var(--bw-2) solid var(--text-2); pointer-events: none; }
+.sc-bars-neg .sc-bar { position: absolute; left: 50%; translate: -50% 0; bottom: calc(var(--b, 0) * 100%); }
+.sc-bars-neg .sc-bar-negv .sc-bar { animation-name: sc-fade; }
+.sc-bars-neg .sc-bar-negv .sc-bar-value { bottom: auto; top: calc((1 - var(--bot, 0)) * 100% + 8px); }
+.sc-bars-neg .sc-bar-negv .sc-bar-delta { bottom: auto; top: calc((1 - var(--bot, 0)) * 100% + 44px); }
+/* 横向柱图的数值列按内容放宽：「123K 15×」以前挤在 140px 里叠在一起 */
+.sc-hbar-row { grid-template-columns: var(--sc-hlabel-w, 320px) 1fr minmax(140px, max-content); }
+.sc-hbar-value { white-space: nowrap; }
+.sc-bars-neg .sc-bar-negv .sc-bar { border-radius: 0 0 var(--r-xs) var(--r-xs); }
+/* 长英文词不再把框撑破：流程条列宽改 minmax(0,1fr)（1fr 的下限是最长那个词，momentum 把整条撑出画面被裁成 momen），
+   各类框里放不下的词才断（break-word 不影响正常排版宽度） */
+/* 流程条：列宽至少是最长那个词（不在词中间断开），整条放不下由 Pipeline 的 useFitZoom 按宽度等比缩小 */
+.sc-pipeline { grid-auto-columns: minmax(min-content, 1fr) auto; }
+.sc-pipeline-fit { width: 100%; min-width: 0; }
+.sc-spec :is(.sc-chip, .sc-callout, .sc-compare, .sc-list-item, .sc-node, .sc-bignum-label, .sc-bar-label, .sc-table td, .sc-table th) { overflow-wrap: break-word; }
+/* 负值柱的数字在柱底下方：绘图区底部给它留出位置，不然压到下面的类目标签 */
+.sc-bars-neg { --pb: 84px; }
+.sc-bars-neg .sc-bars-plot { padding-bottom: var(--pb); }
+.sc-stats-fit { width: 100%; min-width: 0; }
+.sc-stats { grid-auto-columns: minmax(max-content, 1fr); }
+.sc-stats .sc-bignum-value { white-space: nowrap; }
+/* 背景层（layered-depth）只留形状不留字：放大 1.6 倍的淡文字压在正文上，读不清（6 条） */
+.sc-spec-bg * { color: transparent !important; text-shadow: none !important; }
+.sc-spec-bg text { fill: transparent !important; }
+/* 参考线按绘图区的内容高度定位：绘图区有 48px 上内边距（柱顶标签）和负值时的下内边距，
+   以前按整个盒子的百分比算，参考线比实际数值偏高 48px × 占比 */
+.sc-bars-ref { bottom: calc(var(--pb, 0px) + var(--v, 0) * (100% - 48px - var(--pb, 0px))); }
+/* 窄格子里的卡片：1/3 栏里 40px 标题一行只放得下四五个字（「0.6B 配 / Sharer，跨 / 任务 +10%」）。
+   格子当容器（不放在卡片上：卡片在注释行里是 flex 项，inline-size 包含会把它的内容宽度算成 0） */
+.sc-spec-row > .sc-spec-cell { container-type: inline-size; }
+@container (max-width: 640px) {
+  .sc-spec .sc-callout { padding: var(--space-5) var(--space-7); }
+  .sc-spec .sc-callout .sc-callout-title { font-size: max(30px, var(--body-min)); }
+  .sc-spec .sc-callout .sc-callout-body { font-size: max(26px, var(--body-min)); }
+}
+/* 回放验证（4 篇历史论文 + 新渲染器）剩下的几类：
+   - 流程条的中文：每个字都能断行，min-content 只有一个字宽，整条放不下也不触发缩放 → 阶段框给最小宽度，
+     放不下就由 useFitZoom 整条缩小（「100 / 对图 / 说文」那种一行一两个字的竖列）
+   - 短文本的孤行：pretty 对中文不稳定（「…拖累 / 后续」），卡片正文 / 列表说明 / 作者意图这类 ≤4 行的文字用 balance 均分行长 */
+.sc-stage { min-width: 260px; }
+.sc-spec .sc-stage { padding: var(--space-4) var(--space-5); }
+.sc-spec :is(.sc-callout-body, .sc-callout-body p, .sc-list-body, .sc-intent-text, .sc-bignum-label, .sc-bignum-sub, .sc-compare-body .sc-p, .sc-stage-label, .sc-chip-label) { text-wrap: balance; }
+/* 对照栏窄（3 栏、或被并排压窄）时降字号：和卡片一样用容器查询，宽栏里不受影响 */
+.sc-compare-col { container-type: inline-size; }
+@container (max-width: 320px) {
+  .sc-spec .sc-compare-head { font-size: max(26px, var(--body-min)); }
+  .sc-spec .sc-compare-body { font-size: max(22px, var(--body-min)); }
+}
+.sc-line { display: block; }
+.sc-line-gap { height: 0.6em; }
+/* 很窄的格子（≤420px，三栏里的辅助栏、被并排压窄的卡片）再降一档 */
+@container (max-width: 420px) {
+  .sc-spec .sc-callout { padding: var(--space-4) var(--space-5); }
+  .sc-spec .sc-callout .sc-callout-title { font-size: max(26px, var(--body-min)); }
+  .sc-spec .sc-callout .sc-callout-body { font-size: max(22px, var(--body-min)); }
+}
+
+/* Stats 竖排（fit.ts 判定一排放不下时加 sc-stats-col）：每项一行，数字左、说明右；数字列按最宽的对齐 */
+.sc-stats.sc-stats-col { grid-auto-flow: row; grid-template-columns: max-content minmax(0, 1fr); grid-auto-columns: auto; column-gap: var(--space-5); row-gap: var(--space-5); align-items: center; }
+.sc-stats.sc-stats-col > .sc-bignum { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; grid-template-rows: auto auto; column-gap: var(--space-5); row-gap: var(--space-1); align-items: baseline; }
+.sc-stats.sc-stats-col > .sc-bignum > .sc-bignum-value { grid-row: 1 / span 2; align-self: center; }
+.sc-stats.sc-stats-col > .sc-bignum > :is(.sc-bignum-label, .sc-bignum-sub) { grid-column: 2; }
+.sc-bignum-count { display: inline-block; text-align: right; }
+/* Compare 强调栏的底色往栏外多铺一圈（伪元素，不改栏的内边距 → 强调跨步换栏时不跳版）：以前底色直接铺在栏上，
+   第一栏左内边距是 0，字贴着灰框左缘像被裁掉（2610.04437v1 第 8 章视觉评审 3 条 clipped） */
+.sc-compare { isolation: isolate; }
+.sc-compare-col { position: relative; }
+.sc-compare-col.sc-focus { background: none; }
+.sc-compare-col.sc-focus::before {
+  content: ""; position: absolute; z-index: -1; pointer-events: none;
+  --sc-f: inherit;   /* @property --sc-f 是 inherits: false：伪元素不显式继承就拿到初值 0，底色全透明 */
+  inset: calc(-1 * var(--space-4)) 0;   /* 只往上下多铺；左右往外铺会被格子的 overflow 裁掉 */
+  border-radius: var(--radius-2, 8px);
+  background: color-mix(in oklab, var(--accent) calc(var(--sc-f) * 14%), transparent);
+}
+/* 首 / 尾栏原来左 / 右内边距是 0：底色一铺字就贴边。固定留一点（不随强调变，跨步换栏不跳版） */
+.sc-compare-col:first-child { padding-left: var(--space-5); }
+.sc-compare-col:last-child { padding-right: var(--space-5); }
+/* muted 栏：0.55 叠在浅灰正文上对比度不够（2610.04437v1 第 7 章视觉评审 low-contrast）；0.72 仍看得出是被压下去的一栏 */
+.sc-compare-muted { opacity: 0.72; }

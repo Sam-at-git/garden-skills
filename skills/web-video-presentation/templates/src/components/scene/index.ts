@@ -1,0 +1,31 @@
+// 场景组件层：常见画面模式的原语。每章仍由模型按 outline 组合，但不必再手写 SVG 连线、柱图、列表揭示。
+// 用法与 props 见各文件顶部注释；样式在 styles/scene.css。
+export { Scene } from "./Scene";
+export { Callout } from "./Callout";
+export { BigNumber, Stats } from "./BigNumber";
+export { RevealList } from "./RevealList";
+export type { RevealItem } from "./RevealList";
+export { CodeBlock, range, noteLines } from "./CodeBlock";
+export type { CodeNote, CodeVar } from "./CodeBlock";
+export { Placeholder } from "./Placeholder";
+export { BarChart } from "./BarChart";
+export type { BarItem } from "./BarChart";
+export { Compare } from "./Compare";
+export { Pipeline } from "./Pipeline";
+export { DataTable } from "./DataTable";
+export type { TableMark } from "./DataTable";
+export { Intent } from "./Intent";
+export { Diagram } from "./Diagram";
+export type { DiagramNode, DiagramEdge } from "./Diagram";
+export type { Role, Composition, RoleProps } from "./common";
+export { Prose, Quote } from "./Prose";
+export { Chips } from "./Chips";
+export { FormulaSlot } from "./MathSlot";
+export { Grid } from "./Grid";
+export { Flow } from "./Flow";
+export type { FlowLane, FlowTrip } from "./Flow";
+export { Gauge } from "./Gauge";
+export type { FormulaSymbol } from "./formula-marks";
+export { SpecChapter } from "./SpecChapter";
+export { rich, paragraphs } from "./rich";
+export type { ChapterSpec, StepSpec, Block, BlockType, StepEvidence } from "./spec-types";

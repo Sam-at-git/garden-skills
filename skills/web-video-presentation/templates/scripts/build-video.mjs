@@ -69,7 +69,7 @@ const dur = (f) =>
 const cueFile = JSON.parse(fs.readFileSync(CUES, "utf8"));
 const cues = Array.isArray(cueFile) ? cueFile : cueFile.cues;
 const leadInHintMs = Array.isArray(cueFile) ? 0 : (cueFile.leadInHintMs ?? 0);
-const crop = (!Array.isArray(cueFile) && cueFile.crop) || { x: 80, y: 100, w: 1920, h: 1080 };
+const crop = (!Array.isArray(cueFile) && cueFile.crop) || { x: 40, y: 40, w: 1920, h: 1080 };
 
 if (cues.length !== SEGMENTS.length) {
   console.log(
@@ -191,7 +191,10 @@ const trimStart = leadInMs / 1000;
 // the last step boundary — otherwise the silent cut keeps the ~40s of held
 // final frame the recorder sat on while confirming the deck had finished.
 const lastCueEnd = cues.length ? cues[cues.length - 1].t / 1000 : 0;
-const contentEnd = NO_AUDIO ? lastCueEnd + 3 : clock + TAIL_PAD_S;
+// 片尾（谢谢收看 + 参考文献滚动）没有旁白，按录屏时量到的起点 + 时长整段留下
+const credits = !Array.isArray(cueFile) && cueFile.credits;
+const creditsEnd = credits && cues.length === SEGMENTS.length ? (credits.t + credits.ms) / 1000 + 0.5 : 0;
+const contentEnd = Math.max(NO_AUDIO ? lastCueEnd + 3 : clock + TAIL_PAD_S, creditsEnd);
 const trimDur = Math.min(contentEnd, Math.max(0, videoDur - trimStart));
 if (!NO_AUDIO && trimDur > clock + 0.05) parts.push(mkSilence(trimDur - clock));
 

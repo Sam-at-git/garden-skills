@@ -22,9 +22,9 @@
  * real boundaries in-page lets the muxer lay the narration back down on
  * exactly those frames instead of hoping a pre-stitched track holds sync.
  *
- * The default 2080×1280 viewport is derived, not guessed: useStageScale
- * leaves 80px/100px of margin, so 2080×1280 renders the 1920×1080 stage at
- * scale exactly 1.0 — captured pixel-for-pixel, cropped later with no
+ * The default 2000×1160 viewport is derived, not guessed: useStageScale
+ * leaves ~2% / ~3% of margin (40px / 34.8px here), so 2000×1160 renders the
+ * 1920×1080 stage at scale exactly 1.0 — captured pixel-for-pixel, cropped later with no
  * resampling. The stage rect is measured anyway and written to cues.json, so
  * a theme or hook that changes those margins still crops correctly.
  *
@@ -100,8 +100,8 @@ const SEGMENTS = JSON.parse(fs.readFileSync(path.join(ROOT, "audio-segments.json
 const URL = arg("url", "http://localhost:5173/");
 /** Stop after N steps — smoke-test the pipeline without a full-length run. */
 const MAX_STEPS = parseInt(arg("max-steps", "0"), 10);
-const VW = parseInt(arg("width", "2080"), 10);
-const VH = parseInt(arg("height", "1280"), 10);
+const VW = parseInt(arg("width", "2000"), 10);
+const VH = parseInt(arg("height", "1160"), 10);
 const HARD_TIMEOUT_MS = parseInt(arg("timeout-min", "90"), 10) * 60 * 1000;
 
 fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -170,6 +170,12 @@ await page.evaluate(() => {
   window.__cues = [];
   window.__poll = setInterval(() => {
     if (!window.__armed) return;
+    // 片尾（EndCredits）开始的时刻：出片按它把片尾整段留下
+    const ec = window.__presentationCredits;
+    if (ec && ec.active && window.__creditsT == null) {
+      window.__creditsT = performance.now() - window.__t0;
+      window.__creditsMs = ec.durationMs;
+    }
     const c = window.__presentationCursor && window.__presentationCursor();
     if (!c) return;
     const last = window.__cues[window.__cues.length - 1];
@@ -212,7 +218,14 @@ for (;;) {
     console.log(`  (--max-steps=${MAX_STEPS} 冒烟测试，提前停)`);
     break;
   }
+  // 片尾在放：等它放完（参考文献多时会超过两分钟，不算卡住）
+  const ec = await page.evaluate(() => (window.__creditsT == null ? null : { t: window.__creditsT, ms: window.__creditsMs, now: performance.now() - window.__t0 }));
+  if (ec) {
+    if (ec.now > ec.t + ec.ms + 1500) break;
+    continue;
+  }
   // Done: every step has been shown AND the last one has had time to finish.
+  // （有片尾的工程在最后一步放完后会自动进片尾，走上面那条；这里是没有片尾的老工程）
   if (n >= SEGMENTS.length && Date.now() - lastChange > 40_000) break;
   // Stuck: nothing advanced for two minutes — bail rather than record dead air.
   if (Date.now() - lastChange > 120_000) {
@@ -226,6 +239,7 @@ for (;;) {
 }
 
 const cues = await page.evaluate(() => window.__cues);
+const credits = await page.evaluate(() => (window.__creditsT == null ? null : { t: window.__creditsT, ms: window.__creditsMs }));
 fs.writeFileSync(
   path.join(OUT_DIR, "cues.json"),
   JSON.stringify(
@@ -237,6 +251,8 @@ fs.writeFileSync(
       // back to this number.
       leadInHintMs: tStart - tPageCreated,
       cues,
+      // 片尾开始时刻（相对第 0 步，ms）与时长；没有片尾为 null
+      credits,
     },
     null,
     1,

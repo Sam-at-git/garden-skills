@@ -48,20 +48,23 @@ tts_synthesize() {
 
   local lang="${PRESENTATION_TTS_LANG:-}"
 
-  # Branch instead of using an empty array — runner uses `set -u`, and
-  # macOS-default bash 3.2 fires "unbound variable" on "${arr[@]}" when
-  # arr is empty. The four-branch form is portable to old bash.
-  if [[ -n "$voice" && -n "$lang" ]]; then
-    mmx speech synthesize --voice "$voice" --language "$lang" \
-      --text "$text" --out "$out" >/dev/null 2>&1
-  elif [[ -n "$voice" ]]; then
-    mmx speech synthesize --voice "$voice" --text "$text" --out "$out" \
-      >/dev/null 2>&1
-  elif [[ -n "$lang" ]]; then
-    mmx speech synthesize --language "$lang" --text "$text" --out "$out" \
-      >/dev/null 2>&1
-  else
-    mmx speech synthesize --text "$text" --out "$out" \
-      >/dev/null 2>&1
+  # Build the argument list without an empty-array expansion — runner uses
+  # `set -u`, and macOS-default bash 3.2 fires "unbound variable" on "${arr[@]}"
+  # when arr is empty. Append conditionally instead.
+  local -a args=(speech synthesize --text "$text" --out "$out")
+  [[ -n "$voice" ]] && args+=(--voice "$voice")
+  [[ -n "$lang" ]] && args+=(--language "$lang")
+
+  # Keep stderr: when a segment fails, the last line of mmx's output is the
+  # only clue (401 / quota / network). The runner tees stderr into the log.
+  local err
+  if err=$(mmx "${args[@]}" 2>&1 >/dev/null); then
+    return 0
   fi
+  # mmx prints a pretty JSON error; pull the "message" field, else the last line.
+  local msg
+  msg=$(printf '%s\n' "$err" | grep -m1 -oE '"message": *"[^"]*"' | cut -d'"' -f4)
+  [[ -n "$msg" ]] || msg=$(printf '%s\n' "$err" | grep -v '^\s*$' | tail -1)
+  echo "    mmx: ${msg:0:200}" >&2
+  return 1
 }

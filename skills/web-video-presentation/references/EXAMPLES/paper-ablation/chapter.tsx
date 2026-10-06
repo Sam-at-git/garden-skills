@@ -66,7 +66,6 @@ export default function PaperAblation({ step }: ChapterStepProps) {
       data-composition="asymmetric-60-40"
       data-composition-stable="true"
     >
-      <div className="ev-citation label-mono" data-role="annotation">Paper · RoutingNet · arXiv:2406.07223</div>
       {/* step 1+ 挂 实验支持 / Table 3 */}
       {step >= 1 && (
         <>

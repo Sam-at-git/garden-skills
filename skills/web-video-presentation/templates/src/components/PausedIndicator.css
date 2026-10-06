@@ -1,7 +1,7 @@
 .pi {
   position: fixed;
   /* Clears the 60px `.pb-hover` band so the badge never triggers the
-     progress bar, and never overlaps the GitHub link that lives in it. */
+     progress bar. */
   bottom: 76px;
   right: 20px;
   z-index: 12;

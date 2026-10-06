@@ -84,7 +84,10 @@
   font-size: var(--data-min, 16px);
 }
 
+/* Retired (crowded the chapter title). Hidden so projects whose Evidence.tsx
+   predates the retirement stop showing it too once this CSS is synced. */
 .ev-citation {
+  display: none !important;
   position: absolute;
   top: calc(var(--safe-top, 80px) - 52px);
   left: var(--safe-side, 96px);

@@ -103,6 +103,10 @@ export function PaperFigure({
   const imgStyle: CSSProperties = focus
     ? { transform: `scale(${scale}) translate(${-focus.x}%, ${-focus.y}%)` }
     : {};
+  // 论文图放在 public/paper/，章节里写的是根路径 "/paper/fig-01.png"。部署到子路径（vite base = /p/<paper>/vN/）时
+  // 根路径会指到站点根 → 404，图整张不显示。这里按 BASE_URL 补前缀；base 为 "/" 时原样。
+  const base = (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? "/";
+  const resolved = src.startsWith("/") && base !== "/" && !src.startsWith(base) ? `${base.replace(/\/$/, "")}${src}` : src;
 
   return (
     <figure
@@ -111,7 +115,7 @@ export function PaperFigure({
       style={style}
     >
       <div className="pf-frame" style={height ? { height } : undefined}>
-        <img className="pf-img" src={src} alt={alt} style={imgStyle} />
+        <img className="pf-img" src={resolved} alt={alt} style={imgStyle} />
       </div>
       <FigureCredit label={label} variant={variant} credit={credit} />
     </figure>

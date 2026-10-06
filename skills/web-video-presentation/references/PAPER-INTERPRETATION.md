@@ -65,7 +65,7 @@ my-paper-video/
 ### 1.2 `paper-digest.md` 的 12 节（逐节填）
 
 1. **书目**：标题 / 作者 / 会议或 `arXiv:XXXX.YYYYY` / url / **官方代码链接** / 附录链接
-   —— 喂给角落常驻 citation chip（§3）+ 复现清单（§10）。
+   —— 喂给 cold-open 口播里的出处交代（§2.1）+ 复现清单（§10）。
 2. **论文类型 + 一句理由**：`empirical | methods | survey | theory | system`。
    **决定走 §2 哪一支叙事弧。**
 3. **一句话主张**：论文的核心贡献，≤30 字。
@@ -95,7 +95,7 @@ my-paper-video/
    > "先信我"只能用于**后面真的会兑现**的伏笔，不能当成跳过解释的挡箭牌。
 6. **方法总览（input → process → output）**：先画**完整流程图**，再放大细节。
    初学者必须先有"地图"。
-7. **核心机制**：直觉 → 图 → 必要公式 → 微型样例（四步，见 §7）。
+7. **核心机制**：直觉 → 图 → 必要公式 → 微型样例（公式怎么讲见 §7，代码见 §7.0）。
 8. **关键图表方程（带 locator + 复用决策 + 原图文件）**—— 摘要的心脏。
    每个 artifact 一块，四件事写全：**它证明什么 / 怎么复用（§6 决策树）/
    忠实度注 / 原图文件名**（跑完 §6.5 抓图后回填）：
@@ -110,6 +110,23 @@ my-paper-video/
      reuse：redraw 成同轴柱图（原表不便对比）；纵轴从 0 起、先画基线；
      屏幕标"按 Table 2 重画"。
    - Eq 4 (§3.2)：路由目标。reuse：animate，4 步揭示，q/k/v 固定配色（见 §7）。
+   ```
+
+   **关键公式、算法、结果表要多写几行**（后面的讲法设计和画面都从这里取，漏了就只能念）：
+
+   ```
+   - Eq 4 (§3.2)：路由目标  L = Σ_i p_i · ‖x_i − μ_{z_i}‖²
+     符号：p_i = 第 i 个 token 被路由的概率（0~1）；x_i = 该 token 的隐向量（d 维）；
+           z_i = 分到的专家编号；μ_z = 专家 z 的中心向量
+     思想：把每个 token 往它所属专家的中心拉，拉的力度按它有多确定来加权
+     意义：让专家分工变清楚 → 同样算力下困惑度降 0.3（Table 3）；去掉它负载失衡（§5.2）
+     微例：p=0.9，距离 2 → 贡献 3.6；p=0.1，距离 2 → 贡献 0.4
+   - Algorithm 1 (§3.3)：两两比较 + Elo 更新
+     输入 / 输出：N 个候选 → 排好序的列表
+     分段：L1 初始化 · L3-4 抽一对让模型判 · L5-7 按「意外程度」调分 · L8 排序
+     走一遍：R_A=R_B=1000，A 赢 → E=0.5，K=32 → R_A=1016，R_B=984
+   - Table 2 (§6.1)：看哪里 = Ours 行 vs 最强基线行的 Hard 列（+21.4）
+     作者要证明：收益主要来自难题；保留意见：只有一个数据集（讲者判断，infer）
    ```
 9. **结果**：数据集 / 基线 / 指标 / 头条增益 **+ 方差 + 公平性/稳定性说明**。
 10. **消融与失败案例**：移除每个模块会怎样；在什么数据 / 规模 / 条件下失效。
@@ -150,8 +167,9 @@ my-paper-video/
     可以自来熟，信息必须硬。
 - **step 2 起 · cold-open 演"问题失败"** —— 原有规则：不从标题 / 作者 / 摘要开始，先让
   观众**看见**旧方法翻车。
-- **角落常驻 citation chip**（标题缩写 · 作者 · arXiv id）从 step 1 就挂 —— 化解"不从标题
-  开始"与"披露诚实"的冲突：**招呼 + 概述在前，画面演问题，角落挂出处**，两不耽误。
+- **出处在口播里交代一次**（标题缩写 · 作者 · arXiv id）—— 化解"不从标题开始"与"披露诚实"
+  的冲突：**招呼 + 概述在前，画面演问题，口播点出处**。**画面左上角不挂常驻 citation 行**：
+  它和章节标题挤在一起，标题出不来（`CitationChip` 已退役，渲染为空）。
 - **一句话主张**，并**当场标清**：这是作者声称的（claim），还是实验已证的（proven）。
   见 §3 证据层。
 
@@ -344,7 +362,7 @@ export const evidence: EvidenceMark[] = [
 > 上面这个顺序就是 §2.5.3 四拍在证据层上的投影：**先 `background` 建直觉，
 > 再 `fact` 落回论文原话，再 `supported` 上实验数字，最后才轮到 `infer`。**
 
-### 3.3 `<Evidence>` / `<CitationChip>` —— 脚手架自带，不用拷贝
+### 3.3 `<Evidence>` —— 脚手架自带，不用拷贝
 
 证据层是**随脚手架一起装好的**，不是一段要往项目里粘的代码：
 
@@ -354,12 +372,12 @@ export const evidence: EvidenceMark[] = [
 用法（`EvidenceMark` 的类型直接从组件里 import，不用另建类型文件）：
 
 ```tsx
-import { Evidence, CitationChip } from "../../components/Evidence";
-import { evidence, citation } from "./evidence";
+import { Evidence } from "../../components/Evidence";
+import { evidence } from "./evidence";
 
 // 章节里，本步该挂哪个 badge 由 step 自动决定
 <Evidence step={step} marks={evidence} />
-<CitationChip citation={citation} />
+// 不挂 <CitationChip>：已退役（渲染为空），左上角只留章节标题
 ```
 
 样式是 **token-only、0 新色相**：四类 claim 走 `--ev-fact` /
@@ -379,14 +397,14 @@ claim 类型走 `data-evidence="fact|supported|infer|background"` 属性 —— 
 | `infer` | 最弱 | **虚线**边框 |
 | `background` | 中性弱化（可读） | **无边框 + 前置 `·` 记号**，读作"旁白" |
 
-badge / locator / citation 的落位用 `--safe-*`（跟随主题的 stage padding），
+badge / locator 的落位用 `--safe-*`（跟随主题的 stage padding），
 不写死 48px —— 宽边距主题（`dune` 150px、`tufte-ink` 110px）下不会贴边。
 
-### 3.4 三种落位（ASCII）
+### 3.4 两种落位（ASCII）
 
 ```
-┌─ ev-citation（常驻出处） ───────────────── ev-badge（本步主导 claim 类型） ─┐
-│  Memory for LLMs · Zhoubian · arXiv:2406.07223            [ 实验支持 ]      │
+┌─ （左上不挂出处，留给章节标题） ─────────── ev-badge（本步主导 claim 类型） ─┐
+│                                                           [ 实验支持 ]      │
 │                                                                            │
 │                       …… 主舞台（这一步演的东西）……                         │
 │                                                                            │
@@ -397,9 +415,9 @@ badge / locator / citation 的落位用 `--safe-*`（跟随主题的 stage paddi
 - **右上 badge**：本步**主导** claim 的类型（一个步通常一个主导类型；混时取主）。
 - **左下 locator**：仅 `locator !== null` 时出现。**`fact` / `supported` 必有；
   `infer` / `background` 必须为 null** —— 论文里没有的话，不能指向论文的章节号。
-- **左上 citation chip**：全片常驻，**不是**每步换。
+- **左上角**：不挂 citation chip（已退役）——那里只放章节标题（标题上方的 kicker 也已退役），出处行会把标题挤掉。
 
-> **三个 chip 都坐在页边（margin band），不是内容角落。** `evidence.css` 把它们
+> **两个 chip 都坐在页边（margin band），不是内容角落。** `evidence.css` 把它们
 > 定在 `calc(var(--safe-*) - 52px)` —— 即舞台上下边距里、内容第一行/最后一行的
 > **上方/下方**（约 22px 间隔），像杂志的页眉页脚 folio。**千万别**把它们定回
 > `var(--safe-top/bottom)`：那个值正好等于 `scene-pad` 的 padding，也就是章节内容
@@ -425,7 +443,9 @@ badge / locator / citation 的落位用 `--safe-*`（跟随主题的 stage paddi
 | 模型架构 | **先整体再逐层放大**核心模块 | whole→local-zoom |
 | 注意力/对齐机制 | query 与相关 token 连线，权重强弱渐变 | left-fig-right-explain |
 | 训练目标/损失 | 预测结果向标签靠近，损失值随之变化 | two-col-compare |
-| 数学公式/目标函数 | **每次只突出一个符号**，对应回图中对象 | left-fig-right-explain（+ KaTeX §7） |
+| 数学公式/目标函数 | **每次只突出一个符号**（`Formula symbols active`），对应回图中对象；讲完符号讲思想和意义 | left-fig-right-explain（+ KaTeX §7） |
+| 算法 / 伪代码 / 代码清单 | 按段点亮 + 旁注（`CodeBlock notes active`），再用小例子走一遍（`vars`） | full-width-strip（§7.0） |
+| 结果表 / 原图里的结论 | 先圈「看哪里」（`marks` / `FigureLens`），再写「作者想说明」（`intent`） | asymmetric-60-40（§6.4） |
 | 基线比较 | **同一坐标轴**柱形，先基线后当前 | chart-dominant ★ |
 | 消融实验 | 逐个移除模块，指标同步下降 | two-col-compare |
 | 推理过程 | 状态/token 一步一步更新 | central-hero（时间轴/状态机） |
@@ -461,7 +481,7 @@ badge / locator / citation 的落位用 `--safe-*`（跟随主题的 stage paddi
 | **central-hero** | 核心结论 / 关键数字 / 一句话主张 / 失败案例聚焦 | 一个明确视觉中心，hero 80–140px，四周 ≥80px 留白 |
 | **left-fig-right-explain** | 模型结构 / 算法步骤 / 实验结果 | 左 ~65% 图/流程/实验，右 ~35% 当前结论（≤3 短句） |
 | **two-col-compare** | 旧/新、成功/失败、有/无模块 | 两栏**同尺度同坐标基准**，差异靠移动/遮罩/标记表达，别两边塞满文字 |
-| **whole→local-zoom** | 复杂架构 | 先看完整流程→当前模块高亮其余灰化→放大到全屏讲→回总图重新定位。**优先直接在论文原图上做**（`<PaperFigure focus={…}>`，§6.1），比重画一张更可信也更省事 |
+| **whole→local-zoom** | 复杂架构 | 先看完整流程→当前模块高亮其余灰化→放大到全屏讲→回总图重新定位。**优先直接在论文原图上做**（`<FigureLens mode="spotlight"|"zoom"|"crop">`，§6.1.1），比重画一张更可信也更省事 |
 | **chart-dominant** | 实验部分 | 图表占画面 ≥70%，每步只回答一个问题（"是否优于基线？"），不一次塞整张复杂表 |
 
 > 底部可留字幕安全区，但**别做永久页脚**。主文字 44–64px，重要结论 80px+；出处/
@@ -541,7 +561,7 @@ import { PaperFigure, FigureCredit } from "../../components/PaperFigure";
 —— 出来的画面是标题和图例，柱子和坐标轴全在帧外。**这个失败很安静**：图正常
 显示、`smoke` 也过，只有肉眼看渲染结果才发现讲的和显示的不是一个东西。
 
-**宽幅图表（柱图 / 折线 / 散点）改用「整图 + 遮罩聚光」**，两步：
+**宽幅图表（柱图 / 折线 / 散点）改用「整图 + 遮罩聚光」**。现在直接用 `<FigureLens mode="spotlight">`（§6.1.1），它把下面两步都做了；手写版保留在这里备查：
 
 1. **外层容器宽度写成 `高度 × 图片宽高比`**。`.pf-frame` 里图片是
    `object-fit: contain`，容器比例不对就会留出 letterbox 空白，后面所有按
@@ -564,6 +584,70 @@ import { PaperFigure, FigureCredit } from "../../components/PaperFigure";
 **百分比对不上时，别猜坐标轴在图的哪个位置**：先渲染一次，量出你画的那条线
 落在了哪个刻度上，再线性反推。凭原图缩略图目测轴的起止百分比，实测偏了一倍
 以上是常事。
+
+### 6.1.1 在原图上讲局部：`<FigureLens>`（聚光 / 推镜 / 子图）
+
+讲一张密的原图时，口播说「看左边这块」，观众得自己找。`<FigureLens>`
+把视线放到口播讲的位置，而且始终是**论文原图本身**：非重点区淡出、裁切、放大
+都算高亮，不算改图。脚手架自带（`src/components/FigureLens.tsx` +
+`src/styles/figure-lens.css`），比 `focus` 强的地方有三点：区域按图的**原始百分比**
+定义；帧按图的宽高比算，不会有 letterbox，所以不会出现「高亮带下偏一行」；
+跨步切换时有过渡动画。
+
+| mode | 画面 | 用在 |
+|---|---|---|
+| `spotlight` | 整图不动，非重点区向背景色淡出，重点区描边 + 标签 | 默认。讲结构、讲「这一块在全局的哪」 |
+| `zoom` | spotlight + 镜头推到重点区（多个区取并集），`active` 为空时拉回全图 | 局部小、细节看不清的时候（小模块、图例、某组柱） |
+| `crop` | 子图：帧变成重点区自身的宽高比，只剩这一块；`minimap` 角落小地图标出位置 | 把 Fig 里的 (a)(b)(c) 子图当独立画面讲；区域本身又高又窄 |
+
+```tsx
+import { FigureLens } from "../../components/FigureLens";
+import type { FigureRegion } from "../../components/FigureLens";
+
+// 区域 = 原图百分比（0–100）。label ≤ 24 字，显示在图下方的图例里（图上不放文字）。
+const R: Record<string, FigureRegion> = {
+  gen:  { x: 0.5,  y: 1,    w: 23,   h: 97,   label: "生成候选" },
+  cmp:  { x: 24.5, y: 1,    w: 47,   h: 97,   label: "两两比较" },
+  pair: { x: 27.2, y: 37.5, w: 41.3, h: 19.5, label: "成对比较" },
+  rag:  { x: 27.4, y: 61,   w: 41,   h: 27.5, label: "RAG 检索" },
+};
+// 一步一个区域：index = step - 2。null = 全图、不淡出
+const TOUR = [null, "gen", "cmp", "pair", "rag", null];
+
+if (step >= 2 && step <= 7) return (
+  <div className="scene-pad" data-composition="centered-hero">
+    <FigureLens src="/paper/fig-01.png" ratio={1307 / 732} width={1560} height={800}
+                label="Fig 1" credit="Author et al., 2026" alt="三阶段流水线"
+                regions={R} active={TOUR[step - 2]} mode="zoom" minimap="br" role="primary" />
+  </div>
+);
+```
+
+**依次凸显有两种节奏，都要让组件跨步保持挂载：**
+
+- **一拍一个区域（首选）**：同一个 `<FigureLens>` 连续几步只换 `active`，
+  描边、淡出孔和镜头会从上一个区域**滑到**下一个，看起来是一个连续镜头，
+  不是换片。做法是用范围 gate 一次返回（`step >= a && step <= b`，上界一定要写），
+  每步各写一个 `if (step === N) return <FigureLens …/>` 也行，只要元素树
+  位置和类型不变，React 就会复用实例。**要是每步外层结构不一样**
+  （这步多一个标题、那步少一层 div），组件会重挂载，就只有淡入、没有滑动。
+- **一拍里点亮多处**：`active={["llm", "pair", "rag"]} stagger={600} numbered`，
+  第 i 个区域在 `i × 600ms` 后出现，标签前自动编号 1 2 3。
+
+**纪律：**
+
+1. **`ratio` 一定要给**（`file public/paper/*.png` 能看到尺寸）。不给的话要等图片加载完才测得出比例，第一帧会跳一下。
+2. **坐标用 `debug` 校准**：临时加 `debug`，所有区域画成带 id 和坐标的红虚线框，
+   `smoke --shots` 截一张图就能对照，校准完**删掉**。别凭缩略图目测。
+3. **`zoom` 对高区域不起作用**：放大倍数受区域高度限制，h≈97% 的整列放不大
+   （这时和 spotlight 一样）。高而窄的列要单独讲，就用 `crop`。
+4. **放大上限默认 3.5×**：1300px 宽的位图放大超过 3 倍就糊了。需要更大，
+   先用 `pdftoppm -r 300` 重渲那一页换图（§6.5），别调 `maxZoom`。
+5. **时长**：`duration`（默认 700ms）+ `stagger × (区域数 − 1)` 必须 ≤ 该步口播时长。
+   `anim:budget` 只扫 CSS，**看不到这些过渡**，得自己核对。smoke 截图要带
+   `--settle` 大于这个总时长，不然截到的是半路的镜头。
+6. 口播照样要说「看左边」「推近看中间这根管道」（§6.2）。画面动了口播却没说，观众会以为是换了一张图。
+7. 出处行会自动变成 `Fig 1 局部 · 论文原图`，不要另外再挂 `FigureCredit`。
 
 ### 6.2 口播稿也要点到原图（★ 别让画面独自承担）
 
@@ -601,6 +685,23 @@ import { PaperFigure, FigureCredit } from "../../components/PaperFigure";
   同坐标轴、误差棒、不误导。**本文件不复制那些规则**，按名引用 dataviz skill。
 - 复杂表（论文里那种 8 列大表）**别整张搬上屏**：先隐藏非关键行列，按 step 逐步
   恢复必要上下文，每步只回答一个问题。
+
+### 6.4 表和图：先说「看哪里」，再说「作者想证明什么」
+
+论文里的每张表、每张图都是**论据**：作者放它，是为了支撑正文里的某句话。
+念一遍表头和数字没用 —— 观众不知道该比哪两格。讲一张表 / 图固定三步：
+
+1. **看哪里**：点出作者要你比的那几处 —— 通常是「自己的方法那一行」「最强的基线那一行」
+   「差距最大的那一列」。画面上圈出来：`DataTable marks` + `dimOthers`、原图 `FigureLens active`、
+   重画柱图 `accent` / `delta`。口播要说出位置：「看最后一行、最右边这一格」。
+2. **说明什么**：作者用这几格证明的那句话，**回到正文找原话**（结果小节里「As shown in Table 2, …」
+   那一句），写进 `intent`（`<Intent>` 组件，渲染成「作者想说明：…」）。这是 `supported`，挂 Table / Fig 的 locator。
+3. **保留意见**（可选，单独一步）：只在一个数据集上、方差没报、基线没调参 —— 这是讲者判断，
+   标 `infer`，用 `<Intent tone="caveat" label="但要注意">`，**不要**混进作者意图那一行。
+
+一张大表通常要拆成 2~4 步，每步只回答一个问题（「谁最好」→「好在哪类题」→「代价是什么」）。
+口播里的「看哪里」和画面上的圈必须是同一处 —— 这是最容易错位的地方，写稿时就把位置写进 outline
+（`explains: Table 2 · 看哪里`）。
 
 ### 6.5 抓原图（Phase 0 就做，别等到画章节才发现没图）
 
@@ -669,26 +770,73 @@ pdftoppm -png -r 300 -f 3 -l 3 paper.pdf out/page3   # 整页高清渲染，再�
 
 ---
 
-## 7. 公式处理 + KaTeX（4 步揭示）
+## 7. 公式与代码怎么讲 + KaTeX
 
 > **不是每篇都要推公式。** 公式**只在帮助理解机制 / 实验指标 / 复现**时才留；
 > survey / system 常一个公式都不用。别为"显得专业"强塞公式。
 
-要讲公式时，按**四步**（每步一个 step）：
+要讲一条**关键公式**（digest §8 里标出来的、不懂它就接不上主线的那条），给它**一整段**，
+通常 5~8 步。观众要带走三件事：**每个符号是什么、整条式子在说什么、它为什么重要**。
 
-1. **先演它解决的问题**（大白话，别先上数学）。
-2. **整条公式出现**，所有符号先**弱化**（`.muted`）—— 给结构预览。
-3. **逐个点亮符号**：每个符号配**固定颜色**，且这个颜色**同时点亮**图中对应对象
-   （用 `--accent` / `--ev-*` 等主题色，走 `<Formula>` 的 `color` 字段；
-   **同一符号全片同色**）。
-   ⚠️ **不要**写 `\textcolor{var(--accent)}{Q}`：KaTeX 的颜色参数只认
-   `#rgb` / `#rrggbb` / 具名色，喂 CSS 变量会抛 `Invalid color`，而组件
-   传的是 `throwOnError: false`，于是**整段 TeX 源码会以 KaTeX 硬编码的
-   `#cc0000` 红色原样打在屏幕上** —— 既不报错也不好查。着色一律在外层
-   元素上做。
-4. **代入一个微数字**，让结果**真的变一次**（不是抽象推导）。
+| 拍 | 讲什么 | 画面 |
+|---|---|---|
+| ① 问题 | 这条式子要解决什么（大白话，还不上式子） | `BigNumber` / `Diagram` / 原图局部 |
+| ② 整式 | 整条式子出现，先看结构：「左边是要算的东西，右边分子一块、分母一块」 | `Formula` + `symbols`，`shown: 0` |
+| ③ 符号 | **一个一个讲**：叫什么、在这篇论文里具体是什么（形状 / 单位 / 取值范围）、从哪来 | 同 `id` 的 `Formula`，每步 `active` 加一 |
+| ④ 思想 | 把符号串起来，一句大白话说式子在做什么 | `idea` |
+| ⑤ 意义 | 为什么要这样设计、带来了什么、和旧做法比好在哪（挂 locator） | `significance` |
+| ⑥ 验算 | 代入一组小数字，让结果真的变一次 | 代入后的第二条 `Formula` / `BigNumber` |
 
-**别**逐字符书写整条公式；**别**花大量时间做纯数学推导。
+**符号讲解的纪律：**
+
+- **讲「在这里是什么」，不讲教科书定义**。✗「Q 是查询矩阵」✓「Q 是每个词拿去问别人的问题，
+  一句话 n 个词就是 n 行，每行 64 个数」。形状、单位、取值范围能说就说。
+- **两三个紧密相关的符号可以同一步讲**（`active: [1, 2]`，如 μ 和 σ），但一步别超过三个；
+  下标、求和号这种结构符号跟着它修饰的主体讲，不单独占一步。
+- **讲到哪个符号，式子里就亮哪个**：tex 里用 `[[ ]]` 圈出符号，`symbols[i].tex` 与之一字不差；
+  口播的顺序和 `active` 的顺序一致。
+- **同一符号全片一个意思、一个颜色**；它在图里有对应物（原图的某个框）就同一步用 `FigureLens` 指过去。
+- 次要公式（归一化、正则项）一句带过即可，不必走六拍 —— 六拍只给主线公式。
+
+```jsonc
+// spec.json 里连续几步：同 id、同 composition，只换 active
+{ "type": "Formula", "id": "attn", "role": "primary",
+  "tex": "\\mathrm{softmax}\\left(\\frac{[[Q]][[K^\\top]]}{[[\\sqrt{d_k}]]}\\right)[[V]]",
+  "symbols": [ { "tex": "Q", "name": "查询", "meaning": "每个词拿去问别人的问题，n×64" },
+               { "tex": "K^\\top", "name": "键", "meaning": "每个词挂出来的标签" },
+               { "tex": "\\sqrt{d_k}", "name": "缩放", "meaning": "维度越大点积越大，除掉它防止 softmax 饱和" },
+               { "tex": "V", "name": "值", "meaning": "匹配上以后真正取走的内容" } ],
+  "active": 2 }
+```
+
+TSX 章节里用 `<FormulaSlot tex symbols active idea significance />`（`components/scene`）。
+
+⚠️ 着色一律走组件（CSS 按 `active` 给 `[[ ]]` 圈出的符号上色），**不要**写
+`\textcolor{var(--accent)}{Q}`：KaTeX 的颜色参数只认 `#rgb` / `#rrggbb` / 具名色，
+喂 CSS 变量会抛 `Invalid color`，而组件传的是 `throwOnError: false`，于是**整段 TeX 源码
+会以 KaTeX 硬编码的 `#cc0000` 红色原样打在屏幕上**。
+
+**别**逐字符书写整条公式；**别**花大量时间做纯数学推导 —— 推导过程一句话交代「怎么来的」即可，
+观众要的是「它说了什么」。
+
+### 7.0 代码与伪代码（Algorithm N / 代码清单）
+
+论文里的 Algorithm 框和代码清单，**不要逐行翻译**（「第一行：for i in range…」观众听不下去）。
+讲法和公式同构：
+
+| 拍 | 讲什么 | 画面 |
+|---|---|---|
+| ① 输入 / 输出 | 这段程序吃进什么、吐出什么，一句话 | `Compare` / `Chips` |
+| ② 骨架 | 整段代码出现，按作用切成 3~5 段，说出每段的名字（初始化 / 主循环 / 更新 / 返回） | `CodeBlock` + `notes`，不给 `active` |
+| ③ 逐段 | 每步点亮一段，讲这段**为什么这么写**（哪一行对应哪条公式、哪个设计决定） | 同 `id` 的 `CodeBlock`，`active` 加一 |
+| ④ 走一遍 | 用一个能心算的小例子跑一圈，变量怎么变 | `vars` 每步更新 |
+| ⑤ 对回去 | 这段代码对应论文哪条公式 / 哪张图 | `Formula` / `FigureLens` |
+
+- **只留核心段**，≤24 行；样板代码（import、参数解析、日志）写成 `…` 省略。
+- 伪代码是**原图**（Algorithm 框截图）时，用 `FigureLens` 的 `regions` 一段一段框，
+  和 `CodeBlock notes` 一个意思；能取到文字就优先用 `CodeBlock`（字清楚、可点亮）。
+- 代码里的变量名和公式符号对不上时（`attn_w` vs α），第 ⑤ 拍要明说「代码里的 attn_w 就是式子里的 α」。
+- 这是 `fact`，locator 写 `Algorithm 1` / `Listing 2` / 代码仓库路径。
 
 ### 7.1 KaTeX 是 opt-in（`--math`）
 
@@ -807,8 +955,8 @@ import { Formula } from "../../components/Math";
 - [ ] 讲者补的类比 / 通识标成了 `background`，**没有**混进 `fact`
 - [ ] `infer` / `background` 步骤的 locator 都是 `null`（没有指向论文章节号）
 - [ ] `paper-digest.md` 里每个上屏的 artifact 都有 redraw/animate/cite 决策 + 忠实度注
-- [ ] 角落常驻 citation chip 从 step 1 就在，出处诚实
-- [ ] **左上 citation / 左下 locator / 右上 badge 不与正文重叠**——chip 在页边
+- [ ] 出处（标题 · 作者 · arXiv id）在 cold-open 口播里交代过；画面左上角**没有**出处行
+- [ ] **左下 locator / 右上 badge 不与正文重叠**——chip 在页边
       margin band（evidence.css 已 calc 偏移），正文第一行/最后一行在内容区，二者
       垂直分开；若某步正文贴到角落，给该步首元素加 margin-top 或调整构图（§3.4）
 - [ ] 基线/比较图同坐标轴 + 有方差 + 先画基线（§4 ★）

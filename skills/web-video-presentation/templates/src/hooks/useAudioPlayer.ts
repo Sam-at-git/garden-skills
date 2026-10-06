@@ -25,6 +25,13 @@ interface Options {
    *  its remaining time intact; un-pausing resumes both from where they
    *  stopped. Ignored in `manual` / `audio` mode. */
   paused?: boolean;
+  /** Narration speed (1 = normal). Applied to the live `<audio>` element
+   *  without restarting it, so switching speed mid-step keeps the position.
+   *  Pitch is preserved (browser default). `estimateFallbackMs` is given
+   *  at 1× and divided by `rate` here when the countdown is armed. Rate is
+   *  deliberately NOT a dependency of the main effect — that would rebuild
+   *  the element and restart the step on every speed change. */
+  rate?: number;
 }
 
 /**
@@ -58,6 +65,7 @@ export function useAudioPlayer({
   onAutoAdvance,
   autoStarted,
   paused = false,
+  rate = 1,
 }: Options) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   // Latest callback ref so timers don't capture stale closures.
@@ -71,6 +79,8 @@ export function useAudioPlayer({
   modeRef.current = mode;
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
+  const rateRef = useRef(rate);
+  rateRef.current = rate;
 
   const timerRef = useRef<number | null>(null);
   /** ms still owed on the current countdown; `null` = nothing scheduled. */
@@ -144,11 +154,12 @@ export function useAudioPlayer({
       const audio = new Audio(src);
       audioRef.current = audio;
       audio.preload = "auto";
+      audio.playbackRate = rateRef.current;
 
       audio.addEventListener("ended", () => armAdvance(trailMs));
       audio.addEventListener("error", () => {
         // Audio file missing or undecodable — fall back to estimate.
-        armAdvanceIfIdle(estimateFallbackMs);
+        armAdvanceIfIdle(estimateFallbackMs / rateRef.current);
       });
 
       // Entering a step while paused (jumped with ←/→ or the progress bar):
@@ -158,12 +169,12 @@ export function useAudioPlayer({
           // Autoplay blocked (rare, AutoStartGate should prevent this) or
           // file missing — fall back to estimate in auto mode.
           console.warn("audio play failed:", err);
-          armAdvanceIfIdle(estimateFallbackMs);
+          armAdvanceIfIdle(estimateFallbackMs / rateRef.current);
         });
       }
     } else if (mode === "auto") {
       // No audio for this step (silent / empty narration) — use estimate.
-      armAdvance(estimateFallbackMs);
+      armAdvance(estimateFallbackMs / rateRef.current);
     }
 
     return () => {
@@ -187,6 +198,12 @@ export function useAudioPlayer({
     armAdvanceIfIdle,
     clearTimer,
   ]);
+
+  // ── Speed change, same reasoning as pause: never rebuild the element ──
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) audio.playbackRate = rate;
+  }, [rate]);
 
   // ── Pause / resume, without disturbing the element above ──
   useEffect(() => {
@@ -213,7 +230,7 @@ export function useAudioPlayer({
     if (audio && audio.paused && !audio.ended && !audio.error) {
       audio.play().catch((err) => {
         console.warn("audio resume failed:", err);
-        armAdvanceIfIdle(estimateFallbackMs);
+        armAdvanceIfIdle(estimateFallbackMs / rateRef.current);
       });
     }
   }, [paused, mode, estimateFallbackMs, armAdvance, armAdvanceIfIdle, clearTimer]);
